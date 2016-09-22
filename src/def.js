@@ -1,8 +1,7 @@
 import {html_format,bbcode_format} from './format';
-import {TagParser, TagNode, TagAttribute} from './tag_parser';
+import {TagParser, TagNode, TagAttribute} from './tag-parser';
 import {stack} from './stack';
 import {Node,TextNode} from './nodes';
-import {Parser} from './parser';
 import {is_array, ensure_array} from './helper';
 
 export class AttrPair

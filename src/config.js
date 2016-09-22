@@ -1,5 +1,5 @@
 import {Parser} from './parser';
-import {TagParser} from './tag_parser';
+import {TagParser} from './tag-parser';
 import {bbcode_format} from './format';
 import {TagDefinition,AttributeDefinition,ColorAttrDefinition,UrlAttrDefinition,NumberAttrDefinition,AttrPair,ApprovedAttrDefinition} from './def';
 import {HtmlTagFormatter,HtmlCTATagFormatter,UrlAttrFormatter,AttrJoinTagFormatter,AttrTagFormatter,StyleAttrFormatter,ColorStyleAttrFormatter,NumberStyleAttrFormatter,HtmlTagDef} from './html';

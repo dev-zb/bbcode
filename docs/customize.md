@@ -63,7 +63,7 @@ The `url` attribute will be changed to `href` in html and the `url` tag will bec
 
 ```js
 import {Parser} from 'bbcode/parser';
-import {TagParser} from 'bbcode/tag_parser';
+import {TagParser} from 'bbcode/tag-parser';
 
 // defined tag above
 

@@ -1,5 +1,5 @@
 import {Parser} from './parser';
-import {TagParser} from './tag_parser';
+import {TagParser} from './tag-parser';
 import {TextNode} from './nodes';
 import {html_format,bbcode_format} from './format';
 import {TagDefinition,AttributeDefinition,UrlAttrDefinition,NumberAttrDefinition,AttrPair,ApprovedAttrDefinition} from './def';

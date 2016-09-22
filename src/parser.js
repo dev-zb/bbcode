@@ -1,13 +1,7 @@
-import {ensure_array} from './helper';
+import {ensure_array, valid_identifier} from './helper';
 import {stack} from './stack' 
-import {iter} from './iter';
-import {string} from './string';
-
+import {string_iter, substring, scan_while, scan_to} from './string-iter';
 import {RootNode,TextNode,VoidNode} from './nodes';
-
-export {stack,iter,string,RootNode,TextNode,VoidNode};
-
-
 
 /**
  * 
@@ -86,8 +80,7 @@ export class Parser
     {
         if ( !txt ) { return new RootNode(); }
 
-        let str = new string(txt);
-        let itr = str.begin();
+        let itr = new string_iter( txt );
 
         // 'hijack' next() to track line & column
         let itr_next = itr.next;
@@ -104,7 +97,7 @@ export class Parser
 
         let text_itr = itr.clone();
 
-        while ( !itr.eof() )
+        while ( !itr.end() )
         {
                 // find the next node
             this.scan_node( itr );
@@ -281,7 +274,7 @@ export class Parser
         }
         else // unmatched terminating node 
         {
-            this.node_stack.push_move( tmp_stack );   // return stack to normal
+            this.node_stack.push_col( tmp_stack );   // return stack to normal
             this._error_n( 'Unmatched terminating node', node );
         }
 
@@ -293,7 +286,7 @@ export class Parser
      */
     scan_node( itr )
     {
-        this.scan_to( itr, this.config.types ); 
+        scan_to( itr, this.config.types ); 
     }
 
     /**
@@ -336,7 +329,7 @@ export class Parser
      */
     skip_whitespace( itr )
     {
-        this.scan_while( itr, this.config.whitespace );
+        scan_while( itr, this.config.whitespace );
     }
 
     /**
@@ -344,74 +337,20 @@ export class Parser
      */
     to_whitespace( itr )
     {
-        this.scan_to( itr, this.config.whitespace );
-    }
-
-    /**
-     * Checks if a character is a valid identifier character
-     */
-    static valid_identifier( c, start = false )
-    {
-        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (!start && c === '-');
+        scan_to( itr, this.config.whitespace );
     }
 
     identifier_parse( itr, validate )
     {
-        if ( !validate ) { validate = Parser.valid_identifier; }
+        if ( !validate ) { validate = valid_identifier; }
 
         if ( !validate( itr.value, true ) ) { return ''; }
 
         let it = itr.clone();
         itr.next();
-        this.scan_while( itr, validate );
+        scan_while( itr, validate );
 
-        return string.make_string( it, itr ).toLowerCase();
-    }
-
-    /**
-     * Iterate until [find] is met.
-     */
-    scan_to( it, find )
-    {
-        if ( find instanceof Map || find instanceof Set )
-        {
-            while( !it.eof() && !find.has( it.value ) ) { it.next(); }
-        }
-        else if ( find instanceof Array )
-        {
-            while( !it.eof() && !find.includes( it.value ) ) { it.next(); }
-        }
-        else if ( typeof find === 'function' )
-        {
-            while( !it.eof() && !find( it.value ) ) { it.next(); }
-        }
-        else // assume single value
-        {
-            while( !it.eof() && it.value != find ) { it.next(); }
-        }
-    }
-
-    /**
-     * Iterate while [skip] is true
-     */
-    scan_while( it, skip )
-    {
-        if ( skip instanceof Map || skip instanceof Set )
-        {
-            while( !it.eof() && skip.has( it.value ) ) { it.next(); }
-        }
-        else if ( skip instanceof Array )
-        {
-            while( !it.eof() && skip.includes( it.value ) ) { it.next(); }
-        }
-        else if ( typeof skip === 'function' )
-        {
-            while( !it.eof() && skip( it.value ) ) { it.next(); }
-        }
-        else // assume single value
-        {
-            while( !it.eof() && it.value === skip ) { it.next(); }
-        }
+        return substring( it, itr ).toLowerCase();
     }
 }
 

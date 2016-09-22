@@ -1,8 +1,8 @@
 ## Use
 Import the desired config.
 
-* [config.js](src/config.js) *basic*
-* [config.semantic.js](src/config.semantic.js) *basic + [semantic-ui](https://github.com/Semantic-Org/Semantic-UI) styling*
+* [config.js](../src/config.js) *basic*
+* [config.semantic.js](../src/config-semantic.js) *basic + [semantic-ui](https://github.com/Semantic-Org/Semantic-UI) styling*
 
 [Read here](docs/basic_config.md) or look at the source to see the tags provided by the *basic* config.
 
@@ -25,7 +25,7 @@ let html = root.format('html'); // returns html string
 * [config.html.js](src/config.html.js) *covers most html tags*
 
 ```js
-import {html_parser, bbcode_parser} from 'bbcode/config.html';
+import {html_parser, bbcode_parser} from 'bbcode/config-html';
 
 let html = '<a href="https://github.com/">Github</a>';
 let bbcode = '[a href="https://github.com/"]Github[/a]';

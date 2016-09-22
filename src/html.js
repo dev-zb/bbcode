@@ -1,5 +1,5 @@
 import {TextNode} from './nodes';
-import {TagNode} from './tag_parser';
+import {TagNode} from './tag-parser';
 import {html_format} from './format';
 import {AttributeFormatter,MarkupTagFormatter,AttributeDefinition,TagDefinition,BaseFormatter} from './def'
 

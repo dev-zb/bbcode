@@ -1,7 +1,7 @@
-import {Parser,ParseError} from './parser';
+import {ParseError} from './parser';
 import {VoidNode, NodeParser, ContainerNode, TextNode} from './nodes';
-import {string} from './string';
-import {ensure_array, is_itr} from './helper';
+import {substring, substring_quoted} from './string-iter';
+import {ensure_array, valid_identifier} from './helper';
 import {TagDefinition} from './def';
 import {bbcode_format} from './format';
 
@@ -199,7 +199,7 @@ export class TagParser extends NodeParser
         {
             for( let c of n )
             {
-                if ( !Parser.valid_identifier(c) )
+                if ( !valid_identifier(c) )
                 {
                     this.valid_chars.add(c);
                 }
@@ -230,7 +230,7 @@ export class TagParser extends NodeParser
 
     static valid_value_char( c )
     {
-        return Parser.valid_identifier( c, true ); //(c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+        return valid_identifier( c, true ); //(c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
     }
 
     add_tag( def )
@@ -249,27 +249,8 @@ export class TagParser extends NodeParser
     {
         if ( TagParser.quotes.includes(itr.value) )
         {
-            let quote = itr.value;
-            attrib.quote = quote;
-
-            let it = itr.clone();
-            it.next(); // skip open quote
-
-            let sc = 0;
-            while ( !itr.eof() )
-            {
-                itr.next();
-                if ( itr.value === '\\' ) { ++sc; }
-                else 
-                {
-                    if ( itr.value === quote && !(sc%2) ) break;
-                    sc = 0;
-                }
-            }
-
-            let ret = string.make_string( it, itr );
-            itr.next(); // skip closing quote
-            return ret;
+            attrib.quote = itr.value;
+            return substring_quoted( itr );
         }
         else
         {
@@ -325,12 +306,12 @@ export class TagParser extends NodeParser
     parse_name( itr, parser )
     {
         let it = itr.clone();
-        while ( !itr.eof() && (Parser.valid_identifier( itr.value ) || this.valid_chars.has( itr.value )) )
+        while ( !itr.end() && (valid_identifier( itr.value ) || this.valid_chars.has( itr.value )) )
         {
             itr.next();
         }
 
-        return string.make_string( it, itr ).toLowerCase();
+        return substring( it, itr ).toLowerCase();
     }
 
     _get_def( name )
@@ -386,11 +367,11 @@ export class TagParser extends NodeParser
             // allow tags to be their own attribute
         if ( itr.value === this.format.eq && this.format.self_attribute )
         {
-            itr.set(it); // set back to parse tagname as attribute
+            itr.set( it ); // set back to parse tagname as attribute
         }
 
             // parse attributes
-        while ( !itr.eof() )
+        while ( !itr.end() )
         {
             parser.skip_whitespace( itr );
 

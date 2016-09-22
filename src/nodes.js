@@ -1,5 +1,4 @@
-import {string} from './string';
-import {iter} from './iter';
+import {string_iter, substring} from './string-iter';
 
 /**
  * ==================== 
@@ -41,9 +40,9 @@ export class TextNode extends VoidNode
     {
         super();
         if ( typeof start === 'string' ) { this.value = start; }
-        else if ( start instanceof iter )
+        else if ( start instanceof string_iter )
         {
-            this.value = string.make_string( start, end ) || '';
+            this.value = substring( start, end ) || '';
         }
     }
 
