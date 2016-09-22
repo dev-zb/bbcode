@@ -249,7 +249,7 @@ export class Parser
             }
 
             // handle other removed nodes
-            while ( tmp_stack.size() )
+            while ( tmp_stack.size )
             {
                 let n = tmp_stack.pop();
 

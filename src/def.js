@@ -297,12 +297,12 @@ export class MarkupTagFormatter extends TagFormatter
 
         let attr_stack = new stack();
 
-        attr_stack.push(attributes);
-        attr_stack.push(this.attributes);
+        attr_stack.push_col(attributes);
+        attr_stack.push_col(this.attributes);
 
-        while( attr_stack.size() )
+        while( attr_stack.size )
         {
-            attr_stack.push( this.format_attribute( attr_stack.pop(), attr_map, children ) );
+            attr_stack.push_col( this.format_attribute( attr_stack.pop(), attr_map, children ) );
         }
 
         // combine attribute names & values
