@@ -20,15 +20,17 @@ export class string_iter
         this._clamp();
     }
 
+    _ci()
+    {
+        return !this.end() ? String.fromCodePoint( this._str.codePointAt( this._index ) ) : '';
+    }
+
     _clamp()
     {
         if ( this._index > this._str.length ) { this._index = this._str.length; }
         else if ( this._index < 0 ) { this._index = -1; }
 
-        if ( !this.end() )
-            this._value = String.fromCodePoint( this._str.codePointAt( this._index ) );
-        else
-            this._value = '';
+        this._value = this._ci();
     }
 
     end()
@@ -38,9 +40,7 @@ export class string_iter
 
     next()
     {
-        let cp = this._str.codePointAt( this._index );
-        this._index += String.fromCodePoint( cp ).length;
-
+        ++this._index;
         this._clamp();
 
         return { done: this.end(), value: this.value };
@@ -76,11 +76,11 @@ export class string_iter
 
     set value( v )
     {
-        // only changes local string .. ._.
+        // only changes local string
         if ( !this.end() )
         {
             this._value = v;
-            this._str = this._str.substring( 0, this._index ) + v + this._str.substring( this._index + String.fromCodePoint( this._str.codePointAt( this._index ) ).length );
+            this._str = this._str.substring( 0, this._index ) + v + this._str.substring( this._index + this._ci().length );
         }
     }
 
