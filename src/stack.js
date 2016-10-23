@@ -28,14 +28,10 @@ export class stack
         }
         else
         {
-            try
+            for ( let v of c )
             {
-                for ( let v of c )
-                {
-                    this._items.push( v );
-                }
+                this._items.push( v );
             }
-            catch( e ) { console.error('stack::push_col failed to push collection'); }
         }
 
         if ( move && typeof c.clear === 'function' )

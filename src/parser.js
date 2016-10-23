@@ -1,25 +1,48 @@
 import {ensure_array, valid_identifier} from './helper';
 import {stack} from './stack' 
 import {string_iter, substring, scan_while, scan_to} from './string-iter';
-import {RootNode,TextNode,VoidNode} from './nodes';
+import {RootNode,TextNode,VoidNode,Node} from './nodes';
+import {ParseError, NodeParseError, NullError} from './error';
 
-/**
- * 
- */
-export class ParseError
+export class itr_ex extends string_iter
 {
-    constructor( line, column, error )
+    constructor( str, state = {}, index = 0 )
     {
-        this.line = line;
-        this.column = column;
-        this.error = error;
+        super( str, index );
+
+        this._state = str instanceof itr_ex ? str._state : state || { __line: 0, __column: 0 };
     }
 
-    toString()
+    get line() { return this._state.__line; }
+    set line( v ) { this._state.__line = v; }
+
+    get column() { return this._state.__column; }
+    set column( v ) { this._state.__column = v; }
+
+    _update_loc()
     {
-        return `[${this.line}:${this.column}] ${this.error}`;
+        ++this._state.__column;
+        if ( this.value === '\n' )
+        {
+            ++this._state.__line;
+            this._state.__column = 0;
+        }
+    }
+
+    next()
+    {
+        super.next();
+        this._update_loc();
+    }
+
+    clone()
+    {
+        return new itr_ex( this );
     }
 }
+
+
+
 
 /**
  * ==================== 
@@ -80,11 +103,7 @@ export class Parser
     {
         if ( !txt ) { return new RootNode(); }
 
-        let itr = new string_iter( txt );
-
-        // 'hijack' next() to track line & column
-        let itr_next = itr.next;
-        itr.next = () => { itr_next.call( itr ); this._update_line(itr); };
+        let itr = new itr_ex( txt, this );
 
         let root_node = new RootNode();
 
@@ -97,39 +116,46 @@ export class Parser
 
         let text_itr = itr.clone();
 
+        let node = null;
+        let text = null;
         while ( !itr.end() )
         {
                 // find the next node
-            this.scan_node( itr );
-
-                // save possible text range
-            let text = new TextNode( text_itr, itr );
-
-                // parse node will modify the given iterator
-            let node = this.parse_node( itr ); // parse the node ( [tag] or anything, not the contents )
-
-            if ( node )
+            try
             {
-                let top = this.node_stack.back();
-                top.add_child( text );
+                this.scan_node( itr );
 
-                let mod = false;
-                if ( this.is_void(node) || !node.terminating )
-                {
-                    mod = this.add_node( node );
+                    // save possible text range
+                text = new TextNode( text_itr, itr );
 
-                }
-                else if ( node.terminating )   // a closing node
+                    // parse node will modify the given iterator
+                if ( node = this.parse_node( itr ) ) // parse the node ( [tag] or anything, not the contents )
                 {
-                    mod = this.terminate_node( node );
-                }
+                    let top = this.node_stack.back();
+                    top.add_child( text );
 
-                if ( !mod && !this.node_stack.back().discard_invalid )
-                {
-                    // stack was not modified and no children were added to top. remove last text node.
-                    top.remove_child(text);
+                    let mod = false;
+                    if ( this.is_void(node) || !node.terminating )
+                    {
+                        mod = this.add_node( node );
+
+                    }
+                    else if ( node.terminating )   // a closing node
+                    {
+                        mod = this.terminate_node( node );
+                    }
+
+                    if ( !mod && !this.node_stack.back().discard_invalid )
+                    {
+                        // stack was not modified and no children were added to top. remove last text node.
+                        top.remove_child(text);
+                    }
+                    else { text_itr = itr.clone(); }
                 }
-                else { text_itr = itr.clone(); }
+            }
+            catch( error )
+            {
+                this._add_error( error );
             }
         }
 
@@ -145,26 +171,28 @@ export class Parser
         return root_node;
     }
 
-    _update_line( itr )
+    _add_error( err )
     {
-        ++this.__column;
-        if ( itr.value === '\n' )
+        if ( err instanceof NullError ) return null;
+
+        if ( !(err instanceof ParseError) )
         {
-            ++this.__line;
-            this.__column = 0;
+            err = new ParseError( err.toString(), this.__line, this.__column );
         }
+        this.errors.push( err );
+        return err;
     }
 
     _error_n( msg, node )
     {
-        return this._error( msg, node.__line, node.__column, node.name );
+        return this._add_error( new NodeParseError( msg, node ) );
     }
-    _error( msg, line, column, name )
+
+    _error( msg, line, column )
     {
-        let er = new ParseError( line || 0, column || 0, `${msg} (${name})` );
-        this.errors.push( er );
-        return er;
+        return this._add_error( new ParseError( line || 0, column || 0, msg ) );
     }
+
 
     /**
      * attempt to add node to the top node & stack.

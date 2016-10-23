@@ -1,9 +1,10 @@
-import {ParseError} from './parser';
+import {ParseError, NodeParseError, NullError} from './error';
 import {VoidNode, NodeParser, ContainerNode, TextNode} from './nodes';
 import {substring, substring_quoted} from './string-iter';
 import {ensure_array, valid_identifier} from './helper';
 import {TagDefinition} from './def';
 import {bbcode_format} from './format';
+
 
 /**
  * Attribute
@@ -21,6 +22,8 @@ export class TagAttribute
         this.def = def;
         this.parent = parent;
         this.value = value;
+
+        // [todo] ? check validity here and throw?
     }
 
     static escape_value( value )
@@ -230,7 +233,7 @@ export class TagParser extends NodeParser
 
     static valid_value_char( c )
     {
-        return valid_identifier( c, true ); //(c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+        return valid_identifier( c, true );
     }
 
     add_tag( def )
@@ -245,7 +248,7 @@ export class TagParser extends NodeParser
         return def;
     }
 
-    value_parse( itr, attrib, parser )
+    _attrib_value_parse( itr, attrib, parser )
     {
         if ( TagParser.quotes.includes(itr.value) )
         {
@@ -260,46 +263,29 @@ export class TagParser extends NodeParser
         }
     }
 
-    attribute_parse( itr, tag, parser )
+    _attribute_parse( itr, tag, parser )
     {
-        let line = parser.__line;
-        let column = parser.__column;
-
         let name = parser.identifier_parse(itr);
-        if ( !name )
-        {
-            return parser._error( `Invalid attribute name (${name}) in tag`, line, column, tag.name );
-        }
+        if ( !name ) throw new NodeParseError( `Invalid attribute name (${name}) in tag`, tag );
 
         let adef = tag.def.get_attribute(name); // adef may be undefined/null; continue parsing to skip value.
-        if ( !adef )
-        {
-            parser._error( `Attribute "${name}" is not allowed in tag`, line, column, tag.name );
-        }
-
-        let attrib = this.create_attribute( null, adef, tag, line, column );
+        let attrib = this.create_attribute( null, adef, tag, itr.line, itr.column );
 
         parser.skip_whitespace( itr );
         if ( itr.value !== this.format.eq )
         {
-            if ( !adef ) return null;
-
-            if ( adef.require_value )
-            {
-                return parser._error_n( 'Attribute missing required value', attrib );
-            }
-
-            return attrib;
+            if ( !adef ) throw new NodeParseError( `Attribute "${name}" is not allowed in tag`, tag );
+            if ( adef.require_value ) throw new NodeParseError( `Attribute missing required value`, attrib )
         }
-
-        itr.next(); // skip =
-        attrib.value = this.value_parse( itr, attrib, parser );
-        if ( adef && !attrib.is_valid() )
+        else
         {
-            return parser._error_n( 'Attribute missing required value', attrib );
+            itr.next(); // skip =
+            attrib.value = this._attrib_value_parse( itr, attrib, parser );
+
+            if ( !adef ) new NodeParseError( `Attribute "${name}" is not allowed in tag`, tag );
+            if ( !attrib.is_valid() ) throw new NodeParseError( `Attribute missing required value`, attrib );
         }
 
-        if ( !adef ) return null;
         return attrib;
     }
 
@@ -314,8 +300,10 @@ export class TagParser extends NodeParser
         return substring( it, itr ).toLowerCase();
     }
 
-    _get_def( name )
+    _get_def( name, itr )
     {
+        if ( !name ) throw new NullError();
+
         let def = this.tag_defs.get( name );
         if ( !def )
         {
@@ -326,50 +314,15 @@ export class TagParser extends NodeParser
                     return this.create_def( name );
                 }
             }
-            return null;
+
+            throw new NodeParseError( `Invalid tag name`, name, itr.line, itr.column );
         }
 
         return def;
     }
 
-    parse( itr, parser )
+    _parse_attributes( tag, itr, parser )
     {
-        if ( itr.value !== this.format.l_bracket ) return null;
-
-        let line = parser.__line;
-        let column = parser.__column;
-        itr.next();
-
-        let closing = false;
-        if ( closing = (itr.value === this.format.term) )
-        {
-            itr.next();
-        }
-
-        let it = itr.clone(); // might need to set back
-        let name = this.parse_name( itr, parser );
-
-        let def = this._get_def( name );
-        let tag = this.create_tag( def, closing, line, column );
-
-        if ( closing )
-        {
-            parser.skip_whitespace( itr );
-            if ( itr.value !== this.format.r_bracket )
-            {
-                parser._error_n( `Malformed Closing Tag: missing ${this.format.r_bracket}`, tag );
-                return null;
-            } 
-            itr.next();
-            return tag; 
-        }
-
-            // allow tags to be their own attribute
-        if ( itr.value === this.format.eq && this.format.self_attribute )
-        {
-            itr.set( it ); // set back to parse tagname as attribute
-        }
-
             // parse attributes
         while ( !itr.end() )
         {
@@ -380,31 +333,58 @@ export class TagParser extends NodeParser
                 break;
             }
 
-            let attrib = this.attribute_parse( itr, tag, parser );
-            if ( attrib instanceof TagAttribute )
-            {
-                tag.add_attribute( attrib );
-            }
-            else if ( attrib instanceof ParseError )
-            {
-                return null;
-            }
+            tag.add_attribute( this._attribute_parse( itr, tag, parser ) );
         }
 
         // check for missing required attributes.
-        if( def.attributes )
+        if( tag.def.attributes )
         {
-            for( let [name,a] of def.attributes )
+            for( let [name,a] of tag.def.attributes )
             {
                 if ( a.required && !tag.attributes.has(name) )
                 {
                     let ta = new TagAttribute( null, a, tag);
 
-                    if ( !ta.is_valid() ) { return null; }       // required attribute could not be met.
+                    // required attribute could not be met.
+                    if ( !ta.is_valid() ) throw new NodeParseError( `Missing required attribute (${name}) or value`, tag );
 
                     tag.add_attribute( ta );
                 }
             }
+        }
+    }
+
+    parse( itr, parser )
+    {
+        if ( itr.value !== this.format.l_bracket ) return null;
+
+        itr.next();
+
+        let closing = false;
+        if ( closing = (itr.value === this.format.term) )
+        {
+            itr.next();
+        }
+
+        let it = itr.clone(); // might need to set back
+        let name = this.parse_name( itr, parser );
+        let def = this._get_def( name, itr );
+        let tag = this.create_tag( def, closing, itr.line, itr.column );
+
+        if ( !closing )
+        {
+            // allow tags to be their own attribute
+            if ( itr.value === this.format.eq && this.format.self_attribute )
+            {
+                itr.set( it ); // set back to parse tagname as attribute
+            }
+            this._parse_attributes( tag, itr, parser );
+        }
+
+        parser.skip_whitespace( itr );
+        if ( itr.value !== this.format.r_bracket )
+        {
+            throw new NodeParseError( `Malformed Closing Tag: missing ${this.format.r_bracket}`, tag );
         }
 
         itr.next(); // skip ]
