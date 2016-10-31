@@ -1,0 +1,55 @@
+{
+  "name": "bbcode",
+  "version": "1.0.4",
+  "description": "ES2015/ES6 BBCode parser and converter",
+  "main": "",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "ava": "^0.16.0",
+    "babel-core": "^6.18.0",
+    "babel-plugin-transform-runtime": "^6.15.0",
+    "babel-preset-latest": "^6.16.0",
+    "babel-preset-stage-0": "^6.16.0",
+    "babel-register": "^6.18.0",
+    "babel-runtime": "^6.18.0"
+  },
+  "scripts": {
+    "test": "ava -v"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/z-brooks/bbcode.git"
+  },
+  "keywords": [
+    "bbcode",
+    "html",
+    "es6",
+    "es7",
+    "es2015",
+    "es2016",
+    "javascript",
+    "parser",
+    "converter"
+  ],
+  "author": "Z. Brooks",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/z-brooks/bbcode/issues"
+  },
+  "homepage": "https://github.com/z-brooks/bbcode",
+  "ava": {
+    "files": [
+      "./test/**/*.js"
+    ],
+    "source": [
+      "./src/**/*.js"
+    ],
+    "require": [
+      "babel-register"
+    ]
+  }
+}

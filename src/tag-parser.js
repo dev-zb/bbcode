@@ -22,8 +22,6 @@ export class TagAttribute
         this.def = def;
         this.parent = parent;
         this.value = value;
-
-        // [todo] ? check validity here and throw?
     }
 
     static escape_value( value )
@@ -33,7 +31,7 @@ export class TagAttribute
 
     is_valid()
     {
-        return !this.def || this.def.valid_value(this.value);
+        return this.def && this.def.valid_value(this.value);
     }
 
     get name() { return this.def.name; }
@@ -77,7 +75,8 @@ export class TagNode extends ContainerNode
 
         if ( allowed === true  )
         {
-            this.children.push(node);
+            node.parent = this;
+            this.children.push( node );
         }
 
         return allowed;
@@ -85,7 +84,7 @@ export class TagNode extends ContainerNode
 
     add_attribute( attr )
     {
-        if ( this.def.valid_attribute( attr ) )
+        if ( attr && this.def.valid_attribute( attr ) )
         {
             this.attributes.set( attr.name, attr );
             return true;
@@ -164,6 +163,10 @@ export class TagParser extends NodeParser
     tag_defs = new Map();        // tag definitions
     valid_chars = new Set();     // valid tag name characters. compiled from the given tag defs.
 
+    fail = {
+        illegal_attribute: false
+    };
+
     /**
      * @param tags tag definitions
      * @param delims parse delimiters
@@ -177,6 +180,8 @@ export class TagParser extends NodeParser
         this.create_attribute = config.attribute || TagParser._default_create_attribute;
         this.create_def = config.def || TagParser._default_create_def;
         this.parse_any = !!config.parse_any; 
+        
+        Object.assign( this.fail, config.fail || {} );
 
         this.format = format || TagParser.default_format;
 
@@ -274,15 +279,23 @@ export class TagParser extends NodeParser
         parser.skip_whitespace( itr );
         if ( itr.value !== this.format.eq )
         {
-            if ( !adef ) throw new NodeParseError( `Attribute "${name}" is not allowed in tag`, tag );
-            if ( adef.require_value ) throw new NodeParseError( `Attribute missing required value`, attrib )
+            if ( !adef )
+            {
+                if ( this.fail.illegal_attribute ) throw new NodeParseError( `Attribute "${name}" is not allowed in tag`, tag );
+                return null;
+            }
+            if ( !attrib.is_valid() ) throw new NodeParseError( `Attribute missing required value`, attrib )
         }
         else
         {
             itr.next(); // skip =
             attrib.value = this._attrib_value_parse( itr, attrib, parser );
 
-            if ( !adef ) new NodeParseError( `Attribute "${name}" is not allowed in tag`, tag );
+            if ( !adef )
+            {
+                if ( this.fail.illegal_attribute ) throw new NodeParseError( `Attribute "${name}" is not allowed in tag`, tag );
+                return null;
+            }
             if ( !attrib.is_valid() ) throw new NodeParseError( `Attribute missing required value`, attrib );
         }
 
@@ -300,7 +313,7 @@ export class TagParser extends NodeParser
         return substring( it, itr ).toLowerCase();
     }
 
-    _get_def( name, itr )
+    _get_def( name, itr, parser )
     {
         if ( !name ) throw new NullError();
 
@@ -309,7 +322,7 @@ export class TagParser extends NodeParser
         {
             if ( this.parse_any )
             {
-                if ( parser.is_whitespace(itr.value) || (this.self_attribute && itr.value === '=') )
+                if ( parser.is_whitespace(itr.value) || itr.value == this.format.r_bracket || (this.self_attribute && itr.value === '=') )
                 {
                     return this.create_def( name );
                 }
@@ -368,7 +381,7 @@ export class TagParser extends NodeParser
 
         let it = itr.clone(); // might need to set back
         let name = this.parse_name( itr, parser );
-        let def = this._get_def( name, itr );
+        let def = this._get_def( name, itr, parser );
         let tag = this.create_tag( def, closing, itr.line, itr.column );
 
         if ( !closing )

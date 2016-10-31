@@ -1,5 +1,5 @@
 import {html_format,bbcode_format} from './format';
-import {TagParser, TagNode, TagAttribute} from './tag-parser';
+import {TagParser,TagAttribute} from './tag-parser';
 import {stack} from './stack';
 import {Node,TextNode} from './nodes';
 import {is_array, ensure_array} from './helper';
@@ -102,7 +102,7 @@ export class AttributeDefinition
     // checks if a value is set when required.
     valid_value( v )
     {
-        return !this.require_value || (this.require_value && (v !== null && v !== undefined));
+        return !this.require_value || (this.require_value && !!v);
     }    
 
     // used when a tag-attribute value is set. 
@@ -483,11 +483,12 @@ export class TagDefinition
 
         if ( node instanceof TextNode && node.length <= 0 ) { return false; }   // no empty text. 
 
-        if ( node instanceof TagNode )
+        let def = node.def || node;
+        if ( def instanceof TagDefinition )
         {
-            return (!this.children || this.children.has( node.name )) && node.def.valid_parent( this );
+            return (!this.children || this.children.has( def.name )) && def.valid_parent( this );
         }
-        
+
         if ( !this.type_child ) { return true; }
 
         for( let t of this.type_child )
@@ -502,12 +503,24 @@ export class TagDefinition
     {
         if ( !this.parents ) { return this.parents_allow; }
 
-        return this.parents.has( tag.name ) ? this.parents_allow : !this.parents_allow;
+        let name;
+        if ( typeof tag === 'string' ) { name = tag; }
+        else if ( tag instanceof TagDefinition || tag.name ) { name = tag.name; }
+        else if ( tag.def ) { name = tag.def.name; }
+
+        return this.parents.has( name ) ? this.parents_allow : !this.parents_allow;
     }
 
     valid_attribute( attr )
     {
-        return !this.attributes || this.attributes.has( attr.def.name );
+        if ( this.__allow_all_attributes ) { return true; }
+
+        let name = '';
+        if ( typeof attr === 'string' ) { name = attr; }
+        else if ( attr instanceof AttributeDefinition || attr.name ) { name = attr.name; }
+        else if ( attr.def ) { name = attr.def.name; }
+
+        return this.attributes.has( name );
     }
 
     // get attribute def
