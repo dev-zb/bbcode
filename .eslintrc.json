@@ -1,0 +1,33 @@
+{
+    "env": {
+        "browser": true,
+        "commonjs": false,
+        "es6": true
+    },
+    "parser": "babel-eslint",
+    "plugins": [ "import" ],
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "ecmaVersion": 7,
+        "sourceType": "module"
+    },
+    "rules": {
+        "indent": [
+            "error",
+            4
+        ],
+        "linebreak-style": [
+            "error",
+            "windows"
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "no-unused-vars": "off",
+        "comma-spacing": [ "error", { "before": false, "after": true }],
+        "brace-style": [ "error", "allman", { "allowSingleLine": true } ],
+        "block-spacing": [ "error", "always" ],
+        "no-var": "error"
+    }
+}

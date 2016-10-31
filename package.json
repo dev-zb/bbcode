@@ -2,27 +2,37 @@
   "name": "bbcode",
   "version": "1.0.4",
   "description": "ES2015/ES6 BBCode parser and converter",
-  "main": "",
+  "main": "index.js",
   "directories": {
     "doc": "docs",
+    "src": "src",
     "test": "test"
   },
   "dependencies": {},
   "devDependencies": {
     "ava": "^0.16.0",
     "babel-core": "^6.18.0",
+    "babel-eslint": "^7.1.0",
     "babel-plugin-transform-runtime": "^6.15.0",
     "babel-preset-latest": "^6.16.0",
     "babel-preset-stage-0": "^6.16.0",
     "babel-register": "^6.18.0",
-    "babel-runtime": "^6.18.0"
+    "babel-runtime": "^6.18.0",
+    "del": "^2.2.2",
+    "eslint": "^3.9.0",
+    "eslint-plugin-import": "^2.0.1",
+    "gulp": "^3.9.1",
+    "gulp-babel": "^6.1.2",
+    "gulp-eslint": "^3.0.1"
   },
   "scripts": {
+    "build": "yarn gulp build",
+    "lint": "yarn gulp lint",
     "test": "ava -v"
   },
   "repository": {
-    "type": "git",
-    "url": "git+https://github.com/z-brooks/bbcode.git"
+    "url": "git+https://github.com/z-brooks/bbcode.git",
+    "type": "git"
   },
   "keywords": [
     "bbcode",

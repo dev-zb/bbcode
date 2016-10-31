@@ -1,4 +1,4 @@
-import {NodeParser} from './nodes';
+import {NodeParser, VoidNode} from './nodes';
 
 
 export class PingNode extends VoidNode

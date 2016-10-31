@@ -1,7 +1,7 @@
-import {html_format,bbcode_format} from './format';
-import {TagParser,TagAttribute} from './tag-parser';
+import {bbcode_format} from './format';
+import {TagParser, TagAttribute} from './tag-parser';
 import {stack} from './stack';
-import {Node,TextNode} from './nodes';
+import {Node, TextNode} from './nodes';
 import {is_array, ensure_array} from './helper';
 
 export class AttrPair
@@ -47,7 +47,7 @@ export class AttributeFormatter extends BaseFormatter
 
     static escape( value )
     {
-        if ( typeof value === 'string' ) { return JSON.stringify( value ).slice(1,-1); }
+        if ( typeof value === 'string' ) { return JSON.stringify( value ).slice(1, -1); }
         return value;
     }
 }
@@ -158,7 +158,7 @@ export class UrlAttrDefinition extends AttributeDefinition
         super( name, formats, props );
     }
 
-    valid_char( ch, start )
+    valid_char( ch )
     {
         return TagParser.valid_value_char(ch) || UrlAttrDefinition.valid.includes(ch);
     }
@@ -278,9 +278,9 @@ export class MarkupTagFormatter extends TagFormatter
                 else 
                 {
                     map.set( attr.name, { 
-                                    quote: this.format_type.quote === null ? attribute.quote || '' : this.format_type.quote, //!!quote ? quote : attr.quote, 
-                                    value: [attr.value]
-                                });
+                        quote: this.format_type.quote === null ? attribute.quote || '' : this.format_type.quote, //!!quote ? quote : attr.quote, 
+                        value: [attr.value]
+                    });
                 }
             }
         }
@@ -290,7 +290,7 @@ export class MarkupTagFormatter extends TagFormatter
 
     format_attributes( attributes )
     {
-        if ( !attributes ) { return ['',null]; }
+        if ( !attributes ) { return ['', null]; }
 
         let attr_map = new Map();
         let children = [];
@@ -307,7 +307,7 @@ export class MarkupTagFormatter extends TagFormatter
 
         // combine attribute names & values
         let attribs = [];
-        for( let [k,a] of attr_map )
+        for( let [k, a] of attr_map )
         {
             let a_str = a.value.join( ' ' ).trim();
             if ( !a_str )
@@ -320,18 +320,18 @@ export class MarkupTagFormatter extends TagFormatter
             }
         }
 
-        return [attribs.join( ' ' ),children];
+        return [attribs.join( ' ' ), children];
     }
 
     format_tag( attributes, name, close = '' )
     {
-        if ( name === null ) { return ['',]; }
+        if ( name === null ) { return ['', ]; }
 
         let attribs = '';
         let temp_children = [];
         if ( attributes )
         {
-            [attribs,temp_children] = this.format_attributes( attributes );
+            [attribs, temp_children] = this.format_attributes( attributes );
         }
 
         let mid = `${name} ${attribs}`.trim();
@@ -347,7 +347,7 @@ export class MarkupTagFormatter extends TagFormatter
 
         if ( open_name === undefined ) { open_name = this.name; }
 
-        [open_tag,temp_children] = this.format_tag( attributes, open_name );
+        [open_tag, temp_children] = this.format_tag( attributes, open_name );
 
         let _void = this.is_void !== undefined ? this.is_void : def.is_void;
         if ( _void )
@@ -363,7 +363,7 @@ export class MarkupTagFormatter extends TagFormatter
             c_str = def.content_parser( this.format_type, c_str );
         }
 
-        [close_tag,temp_children] = this.format_tag( null, (close_name === undefined ? this.name : close_name), '/' );
+        [close_tag, temp_children] = this.format_tag( null, (close_name === undefined ? this.name : close_name), '/' );
 
         return `${open_tag}${c_str}${close_tag}`;
     }
@@ -531,7 +531,7 @@ export class TagDefinition
         {
                 // create definitions as needed.
             let def = new AttributeDefinition( name );
-            for( let [,f] of this.formats )
+            for( let [, f] of this.formats )
             {
                 def.add_format( new AttributeFormatter( name, f.format_type ) );
             }
@@ -541,4 +541,4 @@ export class TagDefinition
 
         return this.attributes.get( name );
     }
-};
+}

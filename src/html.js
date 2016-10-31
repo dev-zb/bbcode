@@ -1,7 +1,7 @@
 import {TextNode} from './nodes';
-import {TagNode} from './tag-parser';
+import {TagNode, TagAttribute} from './tag-parser';
 import {html_format} from './format';
-import {AttributeFormatter,MarkupTagFormatter,AttributeDefinition,TagDefinition,BaseFormatter} from './def'
+import {AttributeFormatter, MarkupTagFormatter, AttributeDefinition, TagDefinition, BaseFormatter} from './def';
 
 
 /**
@@ -46,7 +46,7 @@ export class UrlAttrFormatter extends HtmlAttrFormatter
     sanitize( value )
     {
         let result;
-        if ( result = this.regex.exec(value) )
+        if ( (result = this.regex.exec(value)) )
         {
             return result[1]; 
         }
@@ -87,12 +87,12 @@ export class StyleAttrFormatter extends HtmlAttrFormatter
 export class ColorStyleAttrFormatter extends StyleAttrFormatter
 {
     static regex = [
-            /(#(?:[0-9a-fA-F]{3}){1,2})/,                                                // hex color
-            /(rgba\((?:\s*(?:[1]?[0-9]{1,2}|2(?:[0-5]{1,2}|[0-4][0-9]))\s*,){3}\s*(?:1|0?\.[0-9]+\s*){1}\)){1}/, // 255,255,255,1.0 color            
-            /(rgb\((?:\s*(?:[1]?[0-9]{1,2}|2(?:[0-5]{1,2}|[0-4][0-9]))\s*,?){3}\)){1}/, // 255,255,255 color
-            /((?:[0-9a-fA-F]{3}){1,2})/
-            ];
-    static names = ['aliceblue','antiquewhite','aqua','aquamarine','azure','beige','bisque','black','blanchedalmond','blue','blueviolet','brown','burlywood','cadetblue','chartreuse','chocolate','coral','cornflowerblue','cornsilk','crimson','cyan','darkblue','darkcyan','darkgoldenrod','darkgray','darkgreen','darkgrey','darkkhaki','darkmagenta','darkolivegreen','darkorange','darkorchid','darkred','darksalmon','darkseagreen','darkslateblue','darkslategray','darkslategrey','darkturquoise','darkviolet','deeppink','deepskyblue','dimgray','dimgrey','dodgerblue','firebrick','floralwhite','forestgreen','fuchsia','gainsboro','ghostwhite','gold','goldenrod','gray','grey','green','greenyellow','honeydew','hotpink','indianred','indigo','ivory','khaki','lavender','lavenderblush','lawngreen','lemonchiffon','lightblue','lightcoral','lightcyan','lightgoldenrodyellow','lightgray','lightgreen','lightgrey','lightpink','lightsalmon','lightseagreen','lightskyblue','lightslategray','lightslategrey','lightsteelblue','lightyellow','lime','limegreen','linen','magenta','maroon','mediumaquamarine','mediumblue','mediumorchid','mediumpurple','mediumseagreen','mediumslateblue','mediumspringgreen','mediumturquoise','mediumvioletred','midnightblue','mintcream','mistyrose','moccasin','navajowhite','navy','oldlace','olive','olivedrab','orange','orangered','orchid','palegoldenrod','palegreen','paleturquoise','palevioletred','papayawhip','peachpuff','peru','pink','plum','powderblue','purple','red','rosybrown','royalblue','saddlebrown','salmon','sandybrown','seagreen','seashell','sienna','silver','skyblue','slateblue','slategray','slategrey','snow','springgreen','steelblue','tan','teal','thistle','tomato','turquoise','violet','wheat','white','whitesmoke','yellow','yellowgreen'];
+        /(#(?:[0-9a-fA-F]{3}){1,2})/,                                                // hex color
+        /(rgba\((?:\s*(?:[1]?[0-9]{1,2}|2(?:[0-5]{1,2}|[0-4][0-9]))\s*,){3}\s*(?:1|0?\.[0-9]+\s*){1}\)){1}/, // 255,255,255,1.0 color            
+        /(rgb\((?:\s*(?:[1]?[0-9]{1,2}|2(?:[0-5]{1,2}|[0-4][0-9]))\s*,?){3}\)){1}/, // 255,255,255 color
+        /((?:[0-9a-fA-F]{3}){1,2})/
+    ];
+    static names = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black', 'blanchedalmond', 'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse', 'chocolate', 'coral', 'cornflowerblue', 'cornsilk', 'crimson', 'cyan', 'darkblue', 'darkcyan', 'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey', 'darkkhaki', 'darkmagenta', 'darkolivegreen', 'darkorange', 'darkorchid', 'darkred', 'darksalmon', 'darkseagreen', 'darkslateblue', 'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen', 'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 'goldenrod', 'gray', 'grey', 'green', 'greenyellow', 'honeydew', 'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender', 'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan', 'lightgoldenrodyellow', 'lightgray', 'lightgreen', 'lightgrey', 'lightpink', 'lightsalmon', 'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 'lightsteelblue', 'lightyellow', 'lime', 'limegreen', 'linen', 'magenta', 'maroon', 'mediumaquamarine', 'mediumblue', 'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue', 'mediumspringgreen', 'mediumturquoise', 'mediumvioletred', 'midnightblue', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite', 'navy', 'oldlace', 'olive', 'olivedrab', 'orange', 'orangered', 'orchid', 'palegoldenrod', 'palegreen', 'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink', 'plum', 'powderblue', 'purple', 'red', 'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown', 'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 'snow', 'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white', 'whitesmoke', 'yellow', 'yellowgreen'];
 
     regex = ColorStyleAttrFormatter.regex;  // default. pass alternate in props
     names = ColorStyleAttrFormatter.names;
@@ -103,12 +103,16 @@ export class ColorStyleAttrFormatter extends StyleAttrFormatter
 
     sanitize( color )   
     {
-        if ( this.names.includes(color.toLowerCase()) ) { return color; }
-        else {
+        if ( this.names.includes( color.toLowerCase() ) )
+        {
+            return color;
+        }
+        else
+        {
             let result;
             for( let rx of this.regex )
             {
-                if ( result = rx.exec(color) )
+                if ( (result = rx.exec( color )) )
                 {
                     return result[1];
                 }
@@ -139,7 +143,7 @@ export class NumberStyleAttrFormatter extends StyleAttrFormatter
     sanitize( value )
     {
         let num = +value || this.min;
-        return Math.min(Math.max(this.min,num),this.max) + this.units;
+        return Math.min(Math.max(this.min, num), this.max) + this.units;
     }
 }
 

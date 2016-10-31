@@ -1,5 +1,5 @@
-import {ParseError, NodeParseError, NullError} from './error';
-import {VoidNode, NodeParser, ContainerNode, TextNode} from './nodes';
+import {NodeParseError, NullError} from './error';
+import {NodeParser, ContainerNode} from './nodes';
 import {substring, substring_quoted} from './string-iter';
 import {ensure_array, valid_identifier} from './helper';
 import {TagDefinition} from './def';
@@ -11,9 +11,9 @@ import {bbcode_format} from './format';
  */
 export class TagAttribute
 {
-    _value;
-    parent;
-    def;
+    _value = '';
+    parent = null;
+    def = null;
 
     quote = ''; // if the value was in quotes it will be saved here.
 
@@ -26,7 +26,7 @@ export class TagAttribute
 
     static escape_value( value )
     {
-        return JSON.stringify(value).slice(1,-1);
+        return JSON.stringify( value ).slice(1, -1);
     }
 
     is_valid()
@@ -38,7 +38,7 @@ export class TagAttribute
 
     format( format )
     {
-       return this.def.format( format, this.value, this );
+        return this.def.format( format, this.value, this );
     }
 
     get value()
@@ -203,7 +203,7 @@ export class TagParser extends NodeParser
         }
 
         // compile valid identifier character set (used during parse)
-        for( let [n,t] of this.tag_defs )
+        for( let [n, t] of this.tag_defs )
         {
             for( let c of n )
             {
@@ -284,7 +284,7 @@ export class TagParser extends NodeParser
                 if ( this.fail.illegal_attribute ) throw new NodeParseError( `Attribute "${name}" is not allowed in tag`, tag );
                 return null;
             }
-            if ( !attrib.is_valid() ) throw new NodeParseError( `Attribute missing required value`, attrib )
+            if ( !attrib.is_valid() ) throw new NodeParseError( `Attribute missing required value`, attrib );
         }
         else
         {
@@ -352,7 +352,7 @@ export class TagParser extends NodeParser
         // check for missing required attributes.
         if( tag.def.attributes )
         {
-            for( let [name,a] of tag.def.attributes )
+            for( let [name, a] of tag.def.attributes )
             {
                 if ( a.required && !tag.attributes.has(name) )
                 {
@@ -373,8 +373,8 @@ export class TagParser extends NodeParser
 
         itr.next();
 
-        let closing = false;
-        if ( closing = (itr.value === this.format.term) )
+        let closing = (itr.value === this.format.term);
+        if ( closing )
         {
             itr.next();
         }

@@ -12,12 +12,19 @@ BBCode/Html parser/formatter developed in es6/es2015
 
 ## Test
 
-Ensure [Node.js](https://nodejs.org) is installed on your system, then install everything required for testing.
+Ensure [Node.js](https://nodejs.org) is installed.
+
+Install [Yarn](https://yarnpkg.com/).
 ```javascript
-> npm install
+> npm install -g yarn
 ```
 
-Run the tests
+Install the dependencies.
 ```javascript
-> npm test
+> yarn
+```
+
+Run the tests.
+```javascript
+> yarn test
 ```

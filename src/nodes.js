@@ -104,9 +104,12 @@ export class ContainerNode extends Node
 
     format( format )
     {
-        return this.children.map( c => { 
+        return this.children.map( c => 
+        { 
             if ( c.format )
+            {
                 return c.format( format );
+            }
             return '';
         }).join( '' );
     }
