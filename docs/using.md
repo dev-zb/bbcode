@@ -4,7 +4,7 @@ Import the desired config.
 * [config.js](../src/config.js) *basic*
 * [config.semantic.js](../src/config-semantic.js) *basic + [semantic-ui](https://github.com/Semantic-Org/Semantic-UI) styling*
 
-[Read here](docs/basic_config.md) or look at the source to see the tags provided by the *basic* config.
+[Read here](basic_config.md) or look at the source to see the tags provided by the *basic* config.
 
 ```js
 import {parser} from 'bbcode/config'; // may be different
@@ -22,7 +22,7 @@ let html = root.format('html'); // returns html string
 
 
 ### Parse html and html-like bbcode
-* [config.html.js](src/config.html.js) *covers most html tags*
+* [config.html.js](../src/config.html.js) *covers most html tags*
 
 ```js
 import {html_parser, bbcode_parser} from 'bbcode/config-html';
@@ -51,7 +51,7 @@ bbcode_root.format('html');
 ## Customize
 If you feel the basic config doesn't provide all the tags you need, or too many, you may add and remove tags from any config with the `add_tag` and `remove_tag` methods.
 
-The [customization](docs/customize.md) guide explains how define tags and their attributes.
+The [customization](customize.md) guide explains how define tags and their attributes.
 
 ### Add a tag.
 ```js
@@ -72,4 +72,4 @@ tag_parser.remove_tag( 'b' );
 ```
 The `TagParser` will no longer recognize `[b]` as a valid tag after this operation.
 
-If you'd like a completely custom config read the [customization](docs/customize.md) guide.
+If you'd like a completely custom config read the [customization](customize.md) guide.
