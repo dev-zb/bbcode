@@ -1,6 +1,20 @@
+class _str
+{
+    _value = '';
+    constructor( value )
+    {
+        _value = value;
+    }
+
+    set str( val ) { _value = val; }
+    get str() { return _value; }
+
+    get length() { return _value.length; }
+}
+
 export class string_iter
 {
-    _str = '';
+    _str = null;
     _index = 0;
     _value = null;
 
@@ -13,7 +27,7 @@ export class string_iter
         }
         else
         {
-            this._str = str;
+            this._str = new _str( str );
             this._index = index;
         }
 
@@ -55,7 +69,7 @@ export class string_iter
 
     get str()
     {
-        return this._str;
+        return this._str.value;
     }
 
     get index()
@@ -76,11 +90,10 @@ export class string_iter
 
     set value( v )
     {
-        // only changes local string
         if ( !this.end() )
         {
             this._value = v;
-            this._str = this._str.substring( 0, this._index ) + v + this._str.substring( this._index + this._ci().length );
+            this._str.value = this._str.value.substring( 0, this._index ) + v + this._str.value.substring( this._index + this._ci().length );
         }
     }
 
