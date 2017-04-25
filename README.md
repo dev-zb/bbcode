@@ -1,30 +1,20 @@
-# BBCode 
-BBCode/Html parser/formatter developed in es6/es2015
+### Parser and formatter for BBCode, HTML, and Markdown.
 
 ## Use
-[Basic Usage](docs/using.md)
-
+[Basics](docs/using.md)
 [Customization](docs/customize.md)
-
-## Build
-
-`WIP`
 
 ## Test
 
-Ensure [Node.js](https://nodejs.org) is installed.
+* Install [Node.js](https://nodejs.org).
+* Install [Yarn](https://yarnpkg.com/).
 
-Install [Yarn](https://yarnpkg.com/).
-```javascript
-> npm install -g yarn
-```
+* Install the dependencies.
+    ```
+    > yarn
+    ```
 
-Install the dependencies.
-```javascript
-> yarn
-```
-
-Run the tests.
-```javascript
-> yarn test
-```
+* Run the tests.
+    ```
+    > yarn test
+    ```
