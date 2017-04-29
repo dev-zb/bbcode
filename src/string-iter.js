@@ -1,17 +1,24 @@
+import {is_map, is_array, is_set, is_string, is_func } from './helper';
+
+/*
+    string wrap
+*/
 class _str
 {
-    _value = '';
+    value = '';
     constructor( value )
     {
-        _value = value;
+        this.value = value;
     }
 
-    set str( val ) { _value = val; }
-    get str() { return _value; }
+    get length() { return this.value.length; }
 
-    get length() { return _value.length; }
+    codePointAt( i ) { return this.value.codePointAt( i ); }
 }
 
+/*
+    Iterates a string while accounting for unicode characters.
+*/
 export class string_iter
 {
     _str = null;
@@ -20,12 +27,12 @@ export class string_iter
 
     constructor( str, index = 0 )
     {
-        if ( str instanceof string_iter )
+        if ( str instanceof string_iter ) // copy ctor
         {
             this._str = str._str;
             this._index = str._index;
         }
-        else
+        else // ctor
         {
             this._str = new _str( str );
             this._index = index;
@@ -51,18 +58,20 @@ export class string_iter
     {
         return (this._index <= -1 || this._index >= this._str.length);
     }
+    get done() { return this.end(); }
 
     next()
     {
         ++this._index;
         this._clamp();
 
-        return { done: this.end(), value: this.value };
+        return { done: this.done, value: this.value };
     }
 
     set( /*string_iter*/ itr )
     {
         this.index = itr.index;
+        this.value = itr.value;
     }
 
     toString() { return this._value; }
@@ -77,6 +86,9 @@ export class string_iter
         return this._index;
     }
 
+    /**
+     * Does not check if `i` is the first byte of a character.
+     */
     set index( i )
     {
         this._index = i;
@@ -102,25 +114,22 @@ export class string_iter
         return this._value.codePointAt( 0 );
     }
 
-    get done() 
-    {
-        return this.end();
-    }
-
     clone()
     {
         return new string_iter( this );
     }
 
-    diff( it )
+    distance( itr )
     {
-        return it.index - this.index;
+        return this.index - itr.index;
     }
+
+    [Symbol.iterator]() { return this; }
 }
 
 
-/**
- * 
+/*
+    Substring using iterators. Expects the iterators refer to the same string.
  */
 export function substring( /*string_iter*/ start, /*string_iter*/ end )
 {
@@ -131,9 +140,15 @@ export function substring( /*string_iter*/ start, /*string_iter*/ end )
     return '';
 }
 
-export function substring_quoted( itr )
+/*
+    Scan a quoted chunk of text. Quotes will be whatever the initial character is when called.
+    @param itr string iterator
+    @param invalid an array of any characters that are invalid (not allowed in the quoted area)
+*/
+export function substring_quoted( itr, invalid = null )
 {
     let quote = itr.value;
+    if ( invalid !== null && !(invalid instanceof Array) ) invalid = [invalid];
 
     itr.next();
     let it = itr.clone();
@@ -143,6 +158,7 @@ export function substring_quoted( itr )
     {
         if ( itr.value === '\\' ) { esc = !esc; }
         else if ( itr.value === quote && !esc ) { break; }
+        else if ( invalid && invalid.includes( itr.value ) ) { return ''; }
         itr.next();
     }
 
@@ -151,54 +167,65 @@ export function substring_quoted( itr )
     return sub;
 }
 
+/*
+    Goto the end of a string
+*/
+export function scan_to_end( it )
+{
+    while ( !it.end() ) { it.next(); }
+}
+
+function _pick_check( v )
+{
+    if ( is_string( v ) )
+    {
+        return (it) => it.value === v;
+    }
+    else if ( is_map( v ) || is_set( v ) )
+    {
+        return (it) => v.has( it.value );
+    }
+    else if ( is_array( v ) )
+    {
+        return (it) => v.includes( it.value );
+    }
+    else if ( is_func( v ) )
+    {
+        return (it) => v( it.value );
+    }
+    else if ( typeof v === 'object' )
+    {
+        return (it) => v.hasOwnProperty( it.value );
+    }
+
+    return (it) => true;
+}
+
+function _scan( it, test, cmp )
+{
+    let _t = _pick_check( test );
+    while( !it.end() && (_t( it ) === cmp) ) { it.next(); }
+}
+
+/*
+    Advance iterator until some character is found
+*/
 export function scan_to( it, find )
 {
-    if ( typeof find === 'string' )
-    {
-        while( !it.end() && it.value !== find ) { it.next(); }
-    }
-    else if ( find instanceof Map || find instanceof Set )
-    {
-        while( !it.end() && !find.has( it.value ) ) { it.next(); }
-    }
-    else if ( find instanceof Array )
-    {
-        while( !it.end() && !find.includes( it.value ) ) { it.next(); }
-    }
-    else if ( typeof find === 'function' )
-    {
-        while( !it.end() && !find( it.value ) ) { it.next(); }
-    }
-    else if ( typeof find === 'object' )
-    {
-        while( !it.end() && !find.hasOwnProperty( it.value ) ) { it.next(); }
-    }
+    _scan( it, find, false );
 }
 
+/*
+    Advance iterator while some character is unseen
+*/
 export function scan_while( it, skip )
 {
-    if ( typeof skip === 'string' )
-    {
-        while( !it.end() && it.value === skip ) { it.next(); }
-    }
-    else if ( skip instanceof Map || skip instanceof Set )
-    {
-        while( !it.end() && skip.has( it.value ) ) { it.next(); }
-    }
-    else if ( skip instanceof Array )
-    {
-        while( !it.end() && skip.includes( it.value ) ) { it.next(); }
-    }
-    else if ( typeof skip === 'function' )
-    {
-        while( !it.end() && skip( it.value ) ) { it.next(); }
-    }
-    else if ( typeof skip === 'object' )
-    {
-        while( !it.end() && skip.hasOwnProperty( it.value ) ) { it.next(); }
-    }
+    _scan( it, skip, true );
 }
 
+/*
+    
+*/
 export function substring_scan( it, scan, find )
 {
     let i = it.clone();
@@ -215,4 +242,20 @@ export function substring_scan_to( it, find )
 export function substring_scan_while( it, find )
 {
     return substring_scan( it, scan_while, find );
+}
+
+
+export function str_read( itr, count )
+{
+    count = Math.trunc( count );
+
+    let s = '';
+    if ( count > 0 )
+    {
+        while( !itr.done() && count-- )
+        {
+            s += itr.value;
+        }
+    }
+    return s;
 }
