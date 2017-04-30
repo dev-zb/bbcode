@@ -2,14 +2,14 @@ import test from 'ava';
 import {TagDefinition,AttributeDefinition} from '../src/def';
 import {TagNode, TagAttribute} from '../src/tag-parser';
 
-function tag( n, c = [], a = null )
+function tag( n, c = [], a = null, f = null )
 {
-    return new TagNode( new TagDefinition( n, c, a ) );
+    return new TagNode( new TagDefinition( n, c, a, f ) );
 }
 
-function attr( n )
+function attr( n, f )
 {
-    return new TagAttribute( 'foo', new AttributeDefinition( n ) );
+    return new TagAttribute( 'foo', new AttributeDefinition( n, f ) );
 }
 
 test( 'fails when given invalid definition', t => {
@@ -50,12 +50,4 @@ test( `don't allow invalid attributes`, t => {
     let b = tag( 'b', null, [] );
 
     t.false( b.add_attribute( a ) );
-} );
-
-test( 'default formats back to valid bbcode', async t => {
-    let a = attr( 'a' );
-    let b = tag( 'b', null, [a.def] );
-    b.add_attribute( a );
-
-    t.is( await b.format( 'bbcode' ), '[b a=foo][/b]' );
 } );

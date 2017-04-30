@@ -1,8 +1,8 @@
 import {Parser} from './parser';
 import {TagParser} from './tag-parser';
-import {html_format, bbcode_format} from './format';
-import {TagDefinition, AttributeDefinition, UrlAttrDefinition, NumberAttrDefinition, ApprovedAttrDefinition} from './def';
-import {HtmlTagFormatter, HtmlAttrFormatter, UrlAttrFormatter} from './html';
+import {bbcode_format} from './bbcode';
+import {TagDefinition, AttributeDefinition, UrlAttrDefinition, NumberAttrDefinition, ListAttrDefinition} from './def';
+import {HtmlTagFormatter, HtmlAttrFormatter, UrlAttrFormatter, html_format} from './html';
 
 // html? [wip]
 let p_el_a = 'a,em,strong,small,mark,abbr,dfn,i,b,s,u,code,var,samp,kbd,sup,sub,q,cite,span,bdo,bdi,br,wbr,ins,del,img,map,area,video,audio,input,textarea,select,button,label,output,datalist,keygen,progress,command,canvas,time,meter'.split(',');
@@ -73,7 +73,7 @@ class ClassFormatter extends HtmlAttrFormatter
 function _a( name, p ) { return new AttributeDefinition( name, new HtmlAttrFormatter( name ), p ); }
 function _u( name, p ) { return new UrlAttrDefinition( name, new UrlAttrFormatter( name ), p ); }
 function _n( name, min = Number.MIN_VALUE, max = Number.MAX_VALUE, p = {} ) { return new NumberAttrDefinition( name, min, max, new HtmlAttrFormatter( name ), p ); }
-function _l( name, list, def = 0, r = true, p = {} ) { return new ApprovedAttrDefinition( name, list, new HtmlAttrFormatter( name ), Object.assign(p, { default_index: def, required: r }) ); }
+function _l( name, list, def = 0, r = true, p = {} ) { return new ListAttrDefinition( name, list, new HtmlAttrFormatter( name ), Object.assign(p, { default_index: def, required: r }) ); }
 function _b( name, r = false, p = {} ) { return _l( name, [name, ''], 0, r, Object.assign( p, { require_value: false } ) ); }
 
 let style       = new AttributeDefinition( 'style', new StyleFormatter() );
@@ -263,5 +263,5 @@ let elements = [
     //t( 'embed', [], [src,height,width,mimetype], { is_void: true }),
 ];
 
-export let bbcode_parser = new Parser(new TagParser(elements, bbcode_format));
-export let html_parser = new Parser(new TagParser(elements, html_format));
+export let html_bb_parser = new TagParser(elements, bbcode_format);
+export let html_parser = new TagParser(elements, html_format);

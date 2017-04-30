@@ -1,4 +1,4 @@
-import {NodeParser, VoidNode} from './nodes';
+import {VoidNode} from './nodes';
 
 
 export class PingNode extends VoidNode
@@ -29,17 +29,17 @@ export class PingNode extends VoidNode
 }
 
 
-export class PingParser extends NodeParser
+export class PingParser
 {
     constructor()
     {
-        super('@');
     }
+
+    can_parse( itr ) { return itr.value === '@'; }
 
     parse( itr, parser )
     {
-        if ( itr.value !== '@' ) return null;
-        itr.next();
+        itr.next(); // skip '@'
 
         let name = parser.identifier_parse( itr );
         if ( !name || !name.length ) return null;

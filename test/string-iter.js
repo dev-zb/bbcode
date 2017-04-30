@@ -11,7 +11,7 @@ test( 'stop at string end', t => {
     t.true( itr.end() );
 });
 
-test( 'handle unicode characters', t => {
+test( 'unicode characters', t => {
     let str = ['a','⛄','b','\u{2620}'];
     let itr = new string_iter( str.join( '' ) );
 
@@ -25,7 +25,7 @@ test( 'handle unicode characters', t => {
     }
 });
 
-test( 'helper:substring', t => {
+test( 'substring', t => {
     let it1 = new string_iter( 'abcdef', 1 );
     let it2 = it1.clone();
     it2.index = 4;
@@ -35,41 +35,43 @@ test( 'helper:substring', t => {
     t.is( str, 'bcd' );
 });
 
-test( 'helper:substring_quoted', t => {
+test( 'substring_quoted', t => {
     let itr = new string_iter( '"foo"' );
-
     let str = substring_quoted( itr );
 
     t.is( str, 'foo' );
 });
 
-test( 'helper:scan_to', t => {
-    let itr = new string_iter( 'abc=def' );
+test( 'substring_quoted with invalid', t => {
+    let itr = new string_iter( ':foo bar:');
+    let str = substring_quoted( itr, ' ' );
 
-    let tests = [
+    t.is( str, '' );
+});
+
+test( 'scan_to', t => {
+
+    [
         '=',
         ['='],
         v => v == '='
-    ];
-
-    tests.forEach( _t => {
-        itr.index = 0;
+    ]
+     .forEach( _t => {
+        let itr = new string_iter( 'abc=def' );
         scan_to( itr, _t );
         t.is( itr.value, '=' );
     });
 });
 
-test( 'helper:scan_while', t => {
-    let itr = new string_iter( '....bc' );
+test( 'scan_while', t => {
 
-    let tests = [
+    [
         '.',
         ['.'],
         v => v == '.'
-    ];
-
-    tests.forEach( _t => {
-        itr.index = 0;
+    ]
+     .forEach( _t => {
+        let itr = new string_iter( '....bc' );
         scan_while( itr, _t );
         t.is( itr.value, 'b' );
     });

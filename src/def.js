@@ -1,8 +1,7 @@
-import {bbcode_format} from './format';
 import {TagParser, TagAttribute} from './tag-parser';
 import {stack} from './stack';
 import {Node, TextNode} from './nodes';
-import {is_array, ensure_array} from './helper';
+import {is_array, is_func, ensure_array} from './helper';
 
 export class AttrPair
 {
@@ -52,18 +51,9 @@ export class AttributeFormatter extends BaseFormatter
     }
 }
 
-export class BBCodeAttrFormatter extends AttributeFormatter
-{
-    constructor( name )
-    {
-        super( name, bbcode_format );
-    }
-}
-
 /**
  * ATTRIBUTE DEFINITIONS
  */
-
 export class AttributeDefinition
 {
     static require_value_default = true;
@@ -75,25 +65,24 @@ export class AttributeDefinition
     require_value = AttributeDefinition.require_value_default;  // lets the parser know a value is required to be a valid attribute
     default_value = null;                                       // default value to set if required_value and value is null/undefined
 
-    constructor( name, formats = null, props = {} )
+    constructor( name, formatter = null, props = {} )
     {
         Object.assign( this, props );
 
         this.name = name;
 
-        this.formats = new Map();
-        this.add_format(new BBCodeAttrFormatter(name));
-        if ( formats )
+        this.formatters = new Map();
+        if ( formatter )
         {
-            if ( !is_array( formats ) )
+            if ( !is_array( formatter ) )
             { 
-                this.add_format( formats ); 
+                this.add_formatter( formatter ); 
             }
             else
             {
-                for( let f of formats )
+                for( let f of formatter )
                 {
-                    this.add_format( f );
+                    this.add_formatter( f );
                 }
             }
         }
@@ -108,22 +97,31 @@ export class AttributeDefinition
     // used when a tag-attribute value is set. 
     validate( value ) { return !this.valid_value(value) ? this.default_value : value; }
 
-    add_format( fmt )
+    add_formatter( fmt, replace = false )
     {
         if ( fmt instanceof AttributeFormatter )
         {
-            this.formats.set( fmt.format_type.name, fmt );   
+            if ( replace || !this.formatters.has( fmt.format_type.name ) )
+            {
+                this.formatters.set( fmt.format_type.name, fmt );
+            }
         }
     }
 
+    /**
+     * Transform to output format
+     * @param {*} format target format
+     * @param {*} value value of the attribute as parsed
+     * @param {*} attr the attribute node
+     */
     format( format, value, attr )
     {
-        if ( this.formats.has( format ) )
+        if ( this.formatters.has( format ) )
         {
-            let ret = this.formats.get( format ).format( value, attr );
-            if ( !(ret instanceof Node) )
+            let ret = this.formatters.get( format ).format( value, attr );
+            if ( !(ret instanceof Node) )   // attributes may transform to a node 
             {
-                if ( !this.valid_value(ret.value) ) 
+                if ( !this.valid_value( ret.value ) ) 
                 {
                     if ( this.default_value ) { ret.value = this.default_value; }
                     else { return null; }
@@ -133,10 +131,13 @@ export class AttributeDefinition
             return ret; 
         }
 
-        return null;
+        return null;    // return null and the attribute is ignored
     }
 }
 
+/**
+ * Color Attribute (#...)
+ */
 export class ColorAttrDefinition extends AttributeDefinition
 {
     constructor( name, formats, props )
@@ -150,6 +151,9 @@ export class ColorAttrDefinition extends AttributeDefinition
     }
 }
 
+/**
+ * URL Attribute
+ */
 export class UrlAttrDefinition extends AttributeDefinition
 {
     static valid = './:%_-&*$?';
@@ -160,10 +164,13 @@ export class UrlAttrDefinition extends AttributeDefinition
 
     valid_char( ch )
     {
-        return TagParser.valid_value_char(ch) || UrlAttrDefinition.valid.includes(ch);
+        return TagParser.valid_value_char( ch ) || UrlAttrDefinition.valid.includes( ch );
     }
 }
 
+/**
+ * Number Attribute
+ */
 export class NumberAttrDefinition extends AttributeDefinition
 {
     constructor( name, min, max, formats, props )
@@ -187,14 +194,16 @@ export class NumberAttrDefinition extends AttributeDefinition
     }
 }
 
-    // attribute with a list of pre-approved values.
-export class ApprovedAttrDefinition extends AttributeDefinition
+/**
+ * Attribute with a set list of valid values
+ */
+export class ListAttrDefinition extends AttributeDefinition
 {
     constructor( name, valid_values, formats, props )
     {
         super(name, formats, props );
 
-        this.valid_values = ensure_array(valid_values); // list of valid values.   
+        this.valid_values = ensure_array( valid_values ); // list of valid values.   
     }
 
     validate( value )
@@ -208,7 +217,6 @@ export class ApprovedAttrDefinition extends AttributeDefinition
 /**
  * TAG FORMATTING
  */
-
 export class TagFormatter extends BaseFormatter
 {
     constructor( tag_name, format_type, props )
@@ -217,6 +225,9 @@ export class TagFormatter extends BaseFormatter
         this.name = tag_name;
     }
 
+    /**
+     * @param {*} children an array of children to format
+     */
     format_children( children )
     {
         if ( !children || !children.length ) { return ''; }
@@ -226,11 +237,11 @@ export class TagFormatter extends BaseFormatter
         {
             if ( child.format )
             {
-                str.push( child.format(this.format_type.name) );
+                str.push( child.format( this.format_type.name ) );
             }
             else if ( typeof child === 'string' )
             {
-                str.push( this.format_type.sanitize(child) );
+                str.push( this.format_type.sanitize( child ) );
             }
         }
         return str.join( '' );
@@ -297,13 +308,10 @@ export class MarkupTagFormatter extends TagFormatter
 
         let attr_stack = new stack();
 
-        attr_stack.push_col(attributes);
-        attr_stack.push_col(this.attributes);
+        attr_stack.push_many(attributes);
+        attr_stack.push_many(this.attributes);
 
-        while( attr_stack.size )
-        {
-            attr_stack.push_col( this.format_attribute( attr_stack.pop(), attr_map, children ) );
-        }
+        attr_stack.pop_each( attrib => attr_stack.push_many( this.format_attribute( attrib, attr_map, children) ) );
 
         // combine attribute names & values
         let attribs = [];
@@ -358,7 +366,7 @@ export class MarkupTagFormatter extends TagFormatter
         let c_str = this.format_children( temp_children );
         c_str += this.format_children( children );
 
-        if ( typeof def.content_parser === 'function' )
+        if ( is_func( def.content_parser ) )
         {
             c_str = def.content_parser( this.format_type, c_str );
         }
@@ -373,21 +381,6 @@ export class MarkupTagFormatter extends TagFormatter
         return this.format_markup( def, children, attributes, this.name );
     }
 }
-
-
-export class BBCodeTagFormatter extends MarkupTagFormatter
-{
-    constructor( tag_name, props )
-    {
-        super( tag_name, bbcode_format, props );
-    }
-    
-    format( def, children, attributes )
-    {
-        return this.format_markup( def, children, attributes, attributes.has( this.name ) ? '' : this.name );
-    }
-}
-
 
 export class TagDefinition
 {
@@ -408,6 +401,14 @@ export class TagDefinition
 
     formats; // formatters.
 
+    /**
+     * Constructor
+     * @param {*} name name of the tag (in its origin format)
+     * @param {*} children allowed child tags: null = all; otherwise pass an array of tag names
+     * @param {*} attributes allowed attributes: null = all, otherwise pass an array of attribute definitions
+     * @param {*} formats format converters
+     * @param {*} props { other, properties }
+     */
     constructor( name, children = null, attributes = null, formats = null, props = {} )
     {
         if ( !name ) 
@@ -419,7 +420,7 @@ export class TagDefinition
 
         this.name = name;
 
-        if ( is_array(children) ) { this.children = new Set( children ); }
+        if ( is_array( children ) ) { this.children = new Set( children ); }
         else if ( children instanceof Set ) { this.children = children; }
 
         this.attributes = new Map();
@@ -440,28 +441,35 @@ export class TagDefinition
         if ( props.parents    ) { this.parents    = new Set( ensure_array( props.parents ) );    }
 
         this.formats = new Map();
-        this.add_format( new BBCodeTagFormatter( name ) );
         if ( formats )
         {
             if ( !is_array( formats ) )
             { 
-                this.add_format( formats ); 
+                this.add_formatter( formats ); 
             }
             else
             {
                 for( let f of formats )
                 {
-                    this.add_format( f );
+                    this.add_formatter( f );
                 }
             }
         }
     }
 
-    add_format( fmt )
+    /**
+     * Add a 'Formatter' that will transform the node into some text output
+     * @param {*} fmt formatter
+     * @param {*} replace replace if another formatter of the same type exists
+     */
+    add_formatter( fmt, replace = false )
     {
         if ( fmt instanceof BaseFormatter )
         {
-            this.formats.set( fmt.format_type.name, fmt );
+            if ( replace || !this.formats.has( fmt.format_type.name ) )
+            {
+                this.formats.set( fmt.format_type.name, fmt );
+            }
         }
     }
 
@@ -533,7 +541,7 @@ export class TagDefinition
             let def = new AttributeDefinition( name );
             for( let [, f] of this.formats )
             {
-                def.add_format( new AttributeFormatter( name, f.format_type ) );
+                def.add_formatter( new AttributeFormatter( name, f.format_type ) );
             }
             this.attributes.set( name, def );
             return def;   

@@ -1,4 +1,4 @@
-import {ensure_array, valid_identifier} from './helper';
+import {is_func, ensure_array, valid_identifier} from './helper';
 import {stack} from './stack';
 import {string_iter, substring, scan_while, scan_to} from './string-iter';
 import {RootNode, TextNode, VoidNode, Node} from './nodes';
@@ -6,26 +6,38 @@ import {ParseError, NodeParseError, NullError} from './error';
 
 export class itr_ex extends string_iter
 {
-    constructor( str, state = {}, index = 0 )
+    _state = {};
+    _last_break = null;
+
+    constructor( str, state = { line: 0, column: 0 }, index = 0 )
     {
         super( str, index );
 
-        this._state = str instanceof itr_ex ? str._state : state || { __line: 0, __column: 0 };
+        // copy constructor
+        if ( str instanceof itr_ex )
+        {
+            Object.assign(this._state, str._state);
+        }
+        else if ( state ) // new constructor
+        {
+            this._state = state;
+        }
     }
 
-    get line() { return this._state.__line; }
-    set line( v ) { this._state.__line = v; }
+    get line() { return this._state.line; }
+    set line( v ) { this._state.line = v; }
 
-    get column() { return this._state.__column; }
-    set column( v ) { this._state.__column = v; }
+    get column() { return this._state.column; }
+    set column( v ) { this._state.column = v; }
 
     _update_loc()
     {
-        ++this._state.__column;
+        ++this._state._column;
         if ( this.value === '\n' )
         {
-            ++this._state.__line;
-            this._state.__column = 0;
+            this._last_break = new string_iter( this );
+            ++this._state.line;
+            this._state.column = 0;
         }
     }
 
@@ -39,6 +51,8 @@ export class itr_ex extends string_iter
     {
         return new itr_ex( this );
     }
+
+    get last_break() { return this._last_break; }
 }
 
 
@@ -52,7 +66,8 @@ export class itr_ex extends string_iter
 export class Parser
 {
     static default_config = {
-        types: new Map(),   // parsable types
+        //types: new Map(),   // parsable types
+        parsers: [],    // sub-parsers
         whitespace: [ 
             '\u0009', '\u000A', '\u000B', '\u000C', '\u000D', '\u0020', '\u0085', '\u00A0',
             '\u1680', '\u2000', '\u2001', '\u2002', '\u2003', '\u2004', '\u2005', '\u2006',
@@ -63,36 +78,20 @@ export class Parser
 
     config = {};
 
-    node_stack = new stack();
+    node_stack = new stack();   // 
+    pending_text = null;        // store any parsed text here while parsing a node. some nodes might need access to this text.
 
-    // error reporting
-    __line = 0;
-    __column = 0;
+    _position = {
+        line: 0,
+        column: 0
+    };
     errors = [];
 
-    constructor( types, config = {} )
+    constructor( parsers, config = {} )
     {
         Object.assign( this.config, Parser.default_config, config );
 
-        this.config.types = new Map();
-        if ( types )
-        {
-            types = ensure_array( types );
-            for( let t of types )
-            {
-                this.add_type( t );
-            }
-        }
-    }
-
-    /**
-     * Add a parsable type
-     * @param delim single character that tells the parser call the type parser
-     * @param type_parser class with a parse method: parse( iterator, main_parser ) 
-     */
-    add_type( type_parser )
-    {
-        this.config.types.set( type_parser.start_delim, type_parser );
+        this.config.parsers = ensure_array( parsers );
     }
 
     /**
@@ -104,71 +103,60 @@ export class Parser
     {
         if ( !txt ) { return new RootNode(); }
 
-        let itr = new itr_ex( txt, this );
+        this.errors = [];
+        this._position = {
+            line: 0,
+            column: 0
+        };
+
+        let itr = new itr_ex( txt, this._position );
 
         let root_node = new RootNode();
 
         this.node_stack.clear();
         this.node_stack.push( root_node );
 
-        this.errors = [];
-        this.__line = 0;
-        this.__column = 0;
-
         let text_itr = itr.clone();
 
         let node = null;
-        let text = null;
+        
         while ( !itr.end() )
         {
-                // find the next node
-            try
+                // save possible text range
+            this.pending_text = new TextNode( text_itr, itr );
+                // parse node will modify the given iterator
+            if ( (node = this.sub_parse( itr )) ) // parse the node ( [tag] or anything, not the contents )
             {
-                this.scan_node( itr );
+                let top = this.node_stack.back();
+                top.add_child( this.pending_text );
 
-                    // save possible text range
-                text = new TextNode( text_itr, itr );
-
-                    // parse node will modify the given iterator
-                if ( (node = this.parse_node( itr )) ) // parse the node ( [tag] or anything, not the contents )
+                let mod = false;
+                if ( this.is_void(node) || !node.terminating )
                 {
-                    let top = this.node_stack.back();
-                    top.add_child( text );
-
-                    let mod = false;
-                    if ( this.is_void(node) || !node.terminating )
-                    {
-                        mod = this.add_node( node );
-
-                    }
-                    else if ( node.terminating )   // a closing node
-                    {
-                        mod = this.terminate_node( node );
-                    }
-
-                    if ( !mod && !this.node_stack.back().discard_invalid )
-                    {
-                        // stack was not modified and no children were added to top. remove last text node.
-                        top.remove_child(text);
-                    }
-                    else { text_itr = itr.clone(); }
+                    mod = this.add_node( node );
                 }
-            }
-            catch( error )
-            {
-                this._add_error( error );
+                else if ( node.terminating )   // a closing node
+                {
+                    mod = this.terminate_node( node );
+                }
+
+                if ( !mod && !this.node_stack.back().discard_invalid )
+                {
+                    // stack was not modified and no children were added to top. remove last text node.
+                    top.remove_child( this.pending_text );
+                }
+                else { text_itr = itr.clone(); }
             }
         }
 
         // add any unclaimed text
-        if ( text_itr.diff(itr) )
+        if ( itr.distance( text_itr ) > 0 )// text_itr.diff(itr) )
         {
             this.node_stack.back().add_child( new TextNode( text_itr, itr ) );
         }
 
         // 
         this.node_stack.clear();
-
         return root_node;
     }
 
@@ -178,7 +166,7 @@ export class Parser
 
         if ( !(err instanceof ParseError) )
         {
-            err = new ParseError( err.toString(), this.__line, this.__column );
+            err = new ParseError( err.toString(), this._position.line, this._position.line );
         }
         this.errors.push( err );
         return err;
@@ -247,7 +235,7 @@ export class Parser
     terminate_node( node, inject )
     {
         // find opening node in stack
-        let tmp_stack = new stack();
+        let tmp_stack = [];
         let found = null;
 
         let top = this.node_stack.back();
@@ -258,7 +246,7 @@ export class Parser
             if ( this.node_stack.back() instanceof RootNode ) break; // root is never removed.
 
             let t = this.node_stack.pop();
-            if ( this.compare( t, node ) ) 
+            if ( this.compare( node, t ) ) 
             {
                 found = t;
             }
@@ -278,7 +266,7 @@ export class Parser
             }
 
             // handle other removed nodes
-            while ( tmp_stack.size )
+            while ( tmp_stack.length )
             {
                 let n = tmp_stack.pop();
 
@@ -303,7 +291,7 @@ export class Parser
         }
         else // unmatched terminating node 
         {
-            this.node_stack.push_col( tmp_stack );   // return stack to normal
+            this.node_stack.push_many( tmp_stack );   // return stack to normal
             this._error_n( 'Unmatched terminating node', node );
         }
 
@@ -311,25 +299,33 @@ export class Parser
     }
 
     /**
-     * Walk forward until a node type character is found
+     * Call a sub parser
      */
-    scan_node( itr )
+    sub_parse( itr )
     {
-        scan_to( itr, this.config.types ); 
-    }
+        let itr_clone = itr.clone();
+        for( let parser of this.config.parsers )
+        {
+            try
+            {
+                if ( parser.can_parse( itr ) )
+                {
+                    let node = parser.parse( itr, this );       // attempt parse
+                    if ( node !== null ) return node;
+                    itr.set( itr_clone );
+                }
+            }
+            catch( e )
+            {
+                this._add_error( e );
+                if ( e.consume ) break; // "consume": sub-parser wants whatever text it scanned to be considered "processed" and remain as plain text.
+                itr.set( itr_clone );      // otherwise the iterator is reset and another parser is attempted.
+            }
+        }
 
-    /**
-     * Call a node parser (if available)
-     */
-    parse_node( itr )
-    {
-            // type determines how the rest is parsed.
-        let type = this.config.types.get( itr.value );
+        if ( !itr.distance( itr_clone ) ) { itr.next(); } // no parsers recognize this character; skip.
 
-            // parse method is required.
-        if ( !type || !('parse' in type) ) { return null; }
-
-        return  type.parse( itr, this );
+        return null;
     }
 
     /**
@@ -345,7 +341,7 @@ export class Parser
      */
     compare( n1, n2 )
     {
-        return typeof n1.compare === 'function' ? n1.compare(n2) : n1 === n2;
+        return is_func( n1.compare ) ? n1.compare(n2) : n1 === n2;
     }
 
     is_whitespace( c )

@@ -1,8 +1,30 @@
 import {TextNode} from './nodes';
 import {TagNode, TagAttribute} from './tag-parser';
-import {html_format} from './format';
+import {Format} from './format';
 import {AttributeFormatter, MarkupTagFormatter, AttributeDefinition, TagDefinition, BaseFormatter} from './def';
 
+/**
+ * HTML Format
+ */
+export let html_format = new Format( 'html', { quote: '"', 
+                                    brackets: ['<', '>'], 
+                                    text_sanitize: function( text )
+                                    {
+                                        let str = '';
+                                        for( let c of text )
+                                        {
+                                            let cp = c.codePointAt( 0 );
+                                            if ( (cp <= 32 && cp >= 9) || (cp >= 48 && cp <= 57) || (cp >= 65 && cp <= 90) || (cp >= 97 && cp <= 122) )
+                                            {
+                                                str += c;
+                                            }
+                                            else
+                                            {
+                                                str += `&#${cp};`;
+                                            }
+                                        }
+                                        return str;
+                                    } } );
 
 /**
  * ==================== 

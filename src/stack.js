@@ -1,9 +1,11 @@
+import {is_func, is_map, is_set, is_array} from './helper';
+
 export class stack
 {
     _items = [];
     constructor( ...init )
     {
-        this.push( ...init );
+        this.push_many( init );
     }
 
     get size() { return this.length; }
@@ -17,32 +19,28 @@ export class stack
         this._items = [];
     }
 
-    // push collection
-    push_col( c, move = false )
+    // push collections
+    push_many( c )
     {
         if ( !c ) { return; }
 
-        if ( typeof c.forEach === 'function' )
+        if ( is_map( c ) ) // Maps
         {
-            c.forEach( v => this._items.push( v ) );
+            for( let [, v] of c ) { this.push( v ); }
         }
-        else
+        else if ( is_func( c ) ) // generator
         {
-            for ( let v of c )
-            {
-                this._items.push( v );
-            }
+            for( let v of c() ) { this.push( v ); }
         }
-
-        if ( move && typeof c.clear === 'function' )
+        else // other iterables
         {
-            c.clear();
+            for( let v of c ) { this.push( v ); }
         }
     }
 
-    push( ...v )
+    push( v )
     {
-        this._items.push( ...(v.filter( v => (v !== undefined && v !== null) )) );
+        v !== undefined && this._items.push( v );
     }
 
     pop()
@@ -52,7 +50,7 @@ export class stack
 
     forEach( cb )
     {
-        for( let i = 0, e = this.length; i < e; ++i )
+        for( let i = this.length - 1; i >= 0; --i )
         {
             cb( this._items[i], i, this );
         }
@@ -89,7 +87,7 @@ export class stack
         return null;
     }
     
-    find( val, compare )
+    find( val, compare = (a, b) => a === b )
     {
         let v;
         for( let i = this.length - 1; i >= 0; --i )
@@ -98,5 +96,32 @@ export class stack
             if ( compare( val, v ) ) { return v; }
         }
         return null;
+    }
+
+    any_of( pred )
+    {
+        for( let i = this.length - 1; i >= 0; --i )
+        {
+            if ( pred( this._items[i] ) ) { return true; }
+        }
+        return false;
+    }
+
+    all_of( pred )
+    {
+        for( let i = this.length - 1; i >= 0; --i )
+        {
+            if ( !pred( this._items[i] ) ) { return false; }
+        }
+
+        return true;
+    }
+
+    [Symbol.iterator]()
+    {
+        let i = this._items.length;
+        return {
+            next: () => { return { value: this._items[--i], done: (i < 0) }; }
+        };
     }
 }

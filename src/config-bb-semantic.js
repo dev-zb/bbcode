@@ -1,7 +1,7 @@
 import {Parser} from './parser';
 import {TagParser} from './tag-parser';
-import {bbcode_format} from './format';
-import {TagDefinition, AttributeDefinition, ColorAttrDefinition, UrlAttrDefinition, NumberAttrDefinition, AttrPair, ApprovedAttrDefinition} from './def';
+import {bbcode_format} from './bbcode';
+import {TagDefinition, AttributeDefinition, ColorAttrDefinition, UrlAttrDefinition, NumberAttrDefinition, AttrPair, ListAttrDefinition} from './def';
 import {HtmlTagFormatter, HtmlCTATagFormatter, UrlAttrFormatter, AttrJoinTagFormatter, AttrTagFormatter, StyleAttrFormatter, ColorStyleAttrFormatter, NumberStyleAttrFormatter, ContentWrapTagFormatter, HtmlTagDef} from './html';
 
 /**
@@ -30,7 +30,7 @@ let tag_defs = [
     new TagDefinition( 'sub',       common_allowed, [], new HtmlTagFormatter('sub') ),
 
     new TagDefinition( 'center',    common_allowed, [], new HtmlTagFormatter('div', new AttrPair('class', 'center') ) ),
-    new TagDefinition( 'align',     common_allowed, [new ApprovedAttrDefinition('align', ['left', 'center', 'right', 'justify'], new StyleAttrFormatter('text-align'))], new HtmlTagFormatter('div') ),
+    new TagDefinition( 'align',     common_allowed, [new ListAttrDefinition('align', ['left', 'center', 'right', 'justify'], new StyleAttrFormatter('text-align'))], new HtmlTagFormatter('div') ),
 
     new TagDefinition( 'list',      list_allowed,   [], new HtmlTagFormatter('div', new AttrPair('class', 'ui bulleted list')) ),
     new TagDefinition( 'ul',        list_allowed,   [], new HtmlTagFormatter('div', new AttrPair('class', 'ui bulleted list')) ),
@@ -66,5 +66,4 @@ let tag_defs = [
     new TagDefinition( 'header',    common_allowed, [new NumberAttrDefinition('header', 1, 6, null, { required: true, default_value: 6 })], new AttrJoinTagFormatter('h', 'header', new AttrPair('class', 'ui header'), { format_value: false }) )
 ];
 
-export let tag_parser = new TagParser(tag_defs, bbcode_format);
-export let parser = new Parser(tag_parser);
+export let bbcode_parser = new TagParser(tag_defs, bbcode_format);

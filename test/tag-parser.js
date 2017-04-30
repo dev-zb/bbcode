@@ -3,12 +3,13 @@ import {itr_ex, Parser} from '../src/parser';
 import {TagDefinition, AttributeDefinition} from '../src/def';
 import {TagNode, TagParser} from '../src/tag-parser';
 import {NodeParseError} from '../src/error';
+import {bbcode_format} from '../src/bbcode';
 
 test( 'parses valid tag', async t => {
     try
     {
         let def = new TagDefinition( 'a', null, [] ); 
-        let parser = new TagParser( [ def ] );
+        let parser = new TagParser( [ def ], bbcode_format );
         let itr = new itr_ex( '[a]' );
         let result = await parser.parse( itr, new Parser() );
         t.true( result instanceof TagNode );
@@ -23,7 +24,7 @@ test( 'parses valid tag', async t => {
 test( 'fail when tag is malformed', async t => {
     try
     {
-        let parser = new TagParser( [ new TagDefinition( 'a', null, [] ) ] );
+        let parser = new TagParser( [ new TagDefinition( 'a', null, [] ) ], bbcode_format );
         await parser.parse( new itr_ex( '[a' ), new Parser() );
         t.fail();
     }
@@ -36,7 +37,7 @@ test( 'fail when tag is malformed', async t => {
 test( 'fail when tag is undefined', async t => {
     try
     {
-        let parser = new TagParser( [] );
+        let parser = new TagParser( [], bbcode_format );
         await parser.parse( new itr_ex( '[a]' ), new Parser() );
         t.fail();
     }
@@ -47,7 +48,7 @@ test( 'fail when tag is undefined', async t => {
 } );
 
 test( 'parse all tags', async t => {
-    let parser = new TagParser( [], null, { parse_any: true } );
+    let parser = new TagParser( [], bbcode_format, { parse_any: true } );
     let tag = await parser.parse( new itr_ex( '[a b=c]' ), new Parser() );
 
     t.true( tag instanceof TagNode );
@@ -55,7 +56,7 @@ test( 'parse all tags', async t => {
 } );
 
 test( 'parses attributes', async t => {
-    let parser = new TagParser( [ new TagDefinition( 'a', null, [new AttributeDefinition( 'b' )] ) ] );
+    let parser = new TagParser( [ new TagDefinition( 'a', null, [new AttributeDefinition( 'b' )] ) ], bbcode_format );
 
     ['[a b="c"]','[a b=c]'].forEach( async str => {
 
@@ -71,7 +72,7 @@ test( 'parses attributes', async t => {
 test( 'ignore illegal attributes', async t => {
     try
     {
-        let parser = new TagParser( [ new TagDefinition( 'a', null, [] ) ] );
+        let parser = new TagParser( [ new TagDefinition( 'a', null, [] ) ], bbcode_format );
         let tag = await parser.parse( new itr_ex( '[a b=c]' ), new Parser() );
 
         t.true( tag instanceof TagNode );
@@ -87,7 +88,7 @@ test( 'ignore illegal attributes', async t => {
 test( 'fail on illegal attribute', async t => {
     try
     {
-        let parser = new TagParser( [ new TagDefinition( 'a', null, [] ) ], null, { fail: { illegal_attribute: true } } );
+        let parser = new TagParser( [ new TagDefinition( 'a', null, [] ) ], bbcode_format, { fail: { illegal_attribute: true } } );
         let tag = await parser.parse( new itr_ex( '[a b=c]' ), new Parser() );
 
         t.fail( 'Should fail when containing an illegal (undefined) attribute' );
@@ -101,7 +102,7 @@ test( 'fail on illegal attribute', async t => {
 test( 'fail on missing required attribute', async t => {
     try
     {
-        let parser = new TagParser( [ new TagDefinition( 'a', null, [new AttributeDefinition( 'b', null, { required: true } )] ) ] );
+        let parser = new TagParser( [ new TagDefinition( 'a', null, [new AttributeDefinition( 'b', null, { required: true } )] ) ], bbcode_format );
         let tag = await parser.parse( new itr_ex( '[a]' ), new Parser() );
 
         t.fail( 'Should fail when missing a required attribute' );
@@ -113,7 +114,7 @@ test( 'fail on missing required attribute', async t => {
 } );
 
 test( 'fail when attribute missing required value', async t => {
-    let parser = new TagParser( [ new TagDefinition( 'a', null, [new AttributeDefinition( 'b', null, { require_value: true } )] ) ] );
+    let parser = new TagParser( [ new TagDefinition( 'a', null, [new AttributeDefinition( 'b', null, { require_value: true } )] ) ], bbcode_format );
 
     try
     {

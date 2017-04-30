@@ -1,9 +1,8 @@
 import {NodeParseError, NullError} from './error';
-import {NodeParser, ContainerNode} from './nodes';
+import {ContainerNode} from './nodes';
 import {substring, substring_quoted} from './string-iter';
 import {ensure_array, valid_identifier} from './helper';
 import {TagDefinition} from './def';
-import {bbcode_format} from './format';
 
 
 /**
@@ -61,11 +60,10 @@ export class TagNode extends ContainerNode
 
     constructor( def, closing = false )
     {
-        super();
+        super( { def } );
 
         if ( !def ) { throw new Error('TagNode requires a TagDefinition'); }
 
-        this.def = def;
         this.terminating = closing;    // main parser expects a 'terminating' value
     }
 
@@ -112,10 +110,10 @@ export class TagNode extends ContainerNode
         return !!this.def.discard_invalid;
     }
 
-    compare( to )
+    /*compare( to )
     {
         return this.def.name === to.def.name || this.def.closing_name === to.def.name;
-    }
+    }*/
 
     clone( deep = false )
     {
@@ -154,14 +152,15 @@ export class TagNode extends ContainerNode
     }
 }
 
-export class TagParser extends NodeParser
+export class TagParser
 {
-    static default_format = bbcode_format;
-
     static quotes = ['\'', '"']; // allowed attribute value quotes
 
-    tag_defs = new Map();        // tag definitions
-    valid_chars = new Set();     // valid tag name characters. compiled from the given tag defs.
+    _format = null;
+    _default_formatters = {};
+
+    _tag_defs = new Map();        // tag definitions
+    _valid_chars = new Set();     // valid tag name characters. compiled from the given tag defs.
 
     fail = {
         illegal_attribute: false
@@ -174,7 +173,12 @@ export class TagParser extends NodeParser
      */
     constructor( tags, format, config = {} )
     {
-        super( format ? format.l_bracket : TagParser.default_format.l_bracket );
+        //super( format ? format.l_bracket : TagParser.default_format.l_bracket );
+        this._format = format;
+        this._default_formatters = {
+            tag: config.tag_formatter,
+            attribute: config.attrib_formatter,
+        };
 
         this.create_tag = config.tag || TagParser._default_create_tag;
         this.create_attribute = config.attribute || TagParser._default_create_attribute;
@@ -183,11 +187,11 @@ export class TagParser extends NodeParser
         
         Object.assign( this.fail, config.fail || {} );
 
-        this.format = format || TagParser.default_format;
+        //this._format = format || TagParser.default_format;
 
         if ( tags instanceof Map )
         {
-            this.tag_defs = tags;
+            this._tag_defs = tags;
         }
         else if ( tags )
         {
@@ -203,13 +207,14 @@ export class TagParser extends NodeParser
         }
 
         // compile valid identifier character set (used during parse)
-        for( let [n, t] of this.tag_defs )
+        for( let [n, t] of this._tag_defs )
         {
+            t.add_formatter( this._default_formatters.tag, false );
             for( let c of n )
             {
                 if ( !valid_identifier(c) )
                 {
-                    this.valid_chars.add(c);
+                    this._valid_chars.add(c);
                 }
             }
         }
@@ -223,16 +228,16 @@ export class TagParser extends NodeParser
     static _default_create_tag( def, closing, line, column )
     {
         let t = new TagNode( def, closing );
-        t.__line = line;
-        t.__column = column;
+        t._line = line;
+        t._column = column;
         return t;
     }
 
     static _default_create_attribute( value, def, parent, line, column )
     {
         let a = new TagAttribute( value, def, parent );
-        a.__line = line;
-        a.__column = column;
+        a._line = line;
+        a._column = column;
         return a;
     }
 
@@ -243,13 +248,13 @@ export class TagParser extends NodeParser
 
     add_tag( def )
     {
-        this.tag_defs.set( def.name, def );
+        this._tag_defs.set( def.name, def );
     }
 
     remove_tag( name )
     {
-        let def = this.tag_defs.get(name);
-        this.tag_defs.delete(name);
+        let def = this._tag_defs.get(name);
+        this._tag_defs.delete(name);
         return def;
     }
 
@@ -277,7 +282,7 @@ export class TagParser extends NodeParser
         let attrib = this.create_attribute( null, adef, tag, itr.line, itr.column );
 
         parser.skip_whitespace( itr );
-        if ( itr.value !== this.format.eq )
+        if ( itr.value !== this._format.eq )
         {
             if ( !adef )
             {
@@ -305,7 +310,7 @@ export class TagParser extends NodeParser
     parse_name( itr, parser )
     {
         let it = itr.clone();
-        while ( !itr.end() && (valid_identifier( itr.value ) || this.valid_chars.has( itr.value )) )
+        while ( !itr.end() && (valid_identifier( itr.value ) || this._valid_chars.has( itr.value )) )
         {
             itr.next();
         }
@@ -317,12 +322,12 @@ export class TagParser extends NodeParser
     {
         if ( !name ) throw new NullError();
 
-        let def = this.tag_defs.get( name );
+        let def = this._tag_defs.get( name );
         if ( !def )
         {
             if ( this.parse_any )
             {
-                if ( parser.is_whitespace(itr.value) || itr.value == this.format.r_bracket || (this.self_attribute && itr.value === '=') )
+                if ( parser.is_whitespace(itr.value) || itr.value == this._format.r_bracket || (this.self_attribute && itr.value === '=') )
                 {
                     return this.create_def( name );
                 }
@@ -341,7 +346,7 @@ export class TagParser extends NodeParser
         {
             parser.skip_whitespace( itr );
 
-            if ( itr.value === this.format.r_bracket )
+            if ( itr.value === this._format.r_bracket )
             {
                 break;
             }
@@ -367,13 +372,20 @@ export class TagParser extends NodeParser
         }
     }
 
+    can_parse( itr )
+    {
+        return itr.value === this._format.l_bracket;
+    }
+ 
+    /*
+        @param itr string iterator
+        @param parser host (main) parser
+    */
     parse( itr, parser )
     {
-        if ( itr.value !== this.format.l_bracket ) return null;
+        itr.next(); // skip l-bracket
 
-        itr.next();
-
-        let closing = (itr.value === this.format.term);
+        let closing = (itr.value === this._format.term);
         if ( closing )
         {
             itr.next();
@@ -387,7 +399,7 @@ export class TagParser extends NodeParser
         if ( !closing )
         {
             // allow tags to be their own attribute
-            if ( itr.value === this.format.eq && this.format.self_attribute )
+            if ( itr.value === this._format.eq && this._format.self_attribute )
             {
                 itr.set( it ); // set back to parse tagname as attribute
             }
@@ -395,9 +407,9 @@ export class TagParser extends NodeParser
         }
 
         parser.skip_whitespace( itr );
-        if ( itr.value !== this.format.r_bracket )
+        if ( itr.value !== this._format.r_bracket )
         {
-            throw new NodeParseError( `Malformed Closing Tag: missing ${this.format.r_bracket}`, tag );
+            throw new NodeParseError( `Malformed Closing Tag: missing ${this._format.r_bracket}`, tag );
         }
 
         itr.next(); // skip ]

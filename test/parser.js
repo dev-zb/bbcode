@@ -4,6 +4,7 @@ import {HtmlTagFormatter} from '../src/html';
 import {TagParser, TagNode} from '../src/tag-parser';
 import {Parser} from '../src/parser';
 import {Node,TextNode} from '../src/nodes';
+import {bbcode_format} from '../src/bbcode';
 
 function parser( format )
 {
@@ -19,7 +20,7 @@ function parser( format )
 
 async function parse( t )
 {
-    let p = parser();
+    let p = parser( bbcode_format );
     return await p.parse( t );
 }
 
@@ -74,7 +75,7 @@ test( 'misnesting without overflow', async t => {
     t.true( n.children[1] instanceof TagNode );
 
     t.is( n.children[1].name, 'nov' );
-})
+});
 
 test( 'void tags', async t => {
     let r = await parse( '[void]test' );
@@ -93,3 +94,4 @@ test( 'terminating nodes', async t => {
     t.is( r.children[0].children.length, 1 );
     t.is( r.children[1].children.length, 1 );
 } );
+/**/

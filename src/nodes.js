@@ -1,4 +1,5 @@
-import {string_iter, substring} from './string-iter';
+import {string_iter, substring, scan_to_end} from './string-iter';
+import {is_func} from './helper';
 
 /**
  * ==================== 
@@ -7,15 +8,38 @@ import {string_iter, substring} from './string-iter';
  */
 export class Node
 {
-    __line = 0;     // error reporting.
-    __column = 0;
+    _line = 0;     // error reporting.
+    _column = 0;
 
-    format( format ) { return ''; }
+    _origin_format = 'bbcode';
+
+    def = null;
+
+    constructor( props = { format: 'bbcode' } ) //def, format = 'bbcode' )
+    {
+        this._origin_format = props.format;
+        this.def = props.def;
+    }
+
+    //format( format ) { return ''; }
+    format( format ) { return this.def ? this.def.format( format, this ) : ''; }
     get discard_invalid() { return false; }  // discard invalid nodes [true] or write them to the top level node as text
+
+    compare( to )
+    {
+        return (this.def && to.def) && 
+                (
+                    this.def === to.def ||
+                    (is_func(this.def.compare) && this.def.compare(to.def)) ||
+                    (is_func(to.def.compare) && to.def.compare(this.def))
+                );
+    }
 }
 
     // a node without children.
-export class VoidNode extends Node {}
+export class VoidNode extends Node
+{
+}
 
     // plain text
 export class TextNode extends VoidNode
@@ -35,25 +59,38 @@ export class TextNode extends VoidNode
         return text;
     }
 
-    value = '';
+    _start = null;
+    _end = null;
+
     constructor( start, end )
     {
         super();
-        if ( typeof start === 'string' ) { this.value = start; }
+        if ( typeof start === 'string' )
+        {
+            this._start = new string_iter( start );
+            this._end = this._start.clone();
+            scan_to_end( this._end );
+        }
         else if ( start instanceof string_iter )
         {
-            this.value = substring( start, end ) || '';
+            this._start = start.clone();
+            this._end = end.clone() || this._start.clone();
         }
+    }
+
+    get value()
+    {
+        return substring( this._start, this._end );
     }
 
     get length()
     {
-        return this.value.length;
+        return this._end.distance( this._start );
     }
 
     format( fmt )
     {
-        return TextNode.sanitize( fmt, this.value );
+        return TextNode.sanitize( fmt || this._origin_format, this.value );
     }
 }
 
@@ -61,6 +98,10 @@ export class TextNode extends VoidNode
 export class ContainerNode extends Node
 {
     children = [];
+    constructor( props )
+    {
+        super( props );
+    }
 
     add_child( c )
     {
@@ -104,6 +145,7 @@ export class ContainerNode extends Node
 
     format( format )
     {
+        format = format || this._origin_format;
         return this.children.map( c => 
         { 
             if ( c.format )
@@ -118,18 +160,11 @@ export class ContainerNode extends Node
     // root of parsed result
 export class RootNode extends ContainerNode {}
 
-export class NodeParser
+/**
+ * Tells main parser to terminate the current / last node.
+ */
+export class TerminateNode extends Node
 {
-    start_delim;
-    constructor( delim )
-    {
-        this.start_delim = delim;
-    }
-
-    parse( str )
-    {
-        return null;
-    }
+    terminating = true;
+    compare() { return true; }
 }
-
-
