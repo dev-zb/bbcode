@@ -1,83 +1,133 @@
-# Customize
-*Start by defining some tags and attributes.*
-
+# Customization
 ## Tags
-The `TagDefinition` class is used to provide a tag's name, children, and attributes to the tag parser. It also holds the formatters for the tag. 
-
-*Creating a simple tag*
-
+Use the [`TagDefinition`](../src/def.js) class to define the properties of a tag type. The parser uses this to determine how to process a tag, its attributes, and any children; it's also used during formatting.
 ```js
 import {TagDefinition} from 'bbcode/def';
 
 let tag = new TagDefinition( 'b' );
 ```
-This defines a `b` tag (`[b]` in bbcode). 
-The rest of the parameters are left to the defaults so all tags are allowed as children and all attributes are valid. Additionally this tag can only be formatted back to bbcode. 
+By default all tags are allowed as children, all attributes are valid, and it may only be formatted to BBCode.
 
-The next two parameters define the valid children and attributes. An empty array (`[]`) means no children or attributes are valid and `null` (default) means all are valid.
-The children are listed by name only while the for attributes a list of attribute definitions (`AttributeDefinition`) is required.
-
-*Limiting the allowed child tags*
-
+### Specifying Children
+The second parameter takes an array of valid child tags. An empty array means no child tags are allowed (parsed) and `null` allows all (default).
 ```js
-let tag = new TagDefinition( 'b', ['i']); // only [i] is "allowed" (parsed) when inside [b]
+new TagDefinition( 'b', []);    // none: [b][i]...[/i][/b] => format: [b]...[/b]
+new TagDefinition( 'b', ['i']); // allow i:  [b][i][/i][/b] => format: [b][i][/i][/b]
 ```
-The result is that any tag other than `[i]` will not be parsed when inside `[b]`.
 
-## Attributes
-An instance of the `AttributeDefinition` class defines an attributes. The first parameter sets the name of the attribute when parsed.
-
+### Attributes
+The third paremeter defines valid attributes as an array of `AttributeDefinitions`. `AttributeDefinitions` by default only format back to their origin format.
 ```js
 import {AttributeDefinition} from 'bbcode/def';
 
 let attribute = new AttributeDefinition( 'url' ); // an attribute named 'url'
+
+let tag = new TagDefinition( 'url', null, [attribute] );
 ```
-Like the `TagDefinition` this defines an attribute named `url` that can only be formatted back to `bbcode`. This attribute can be used when defining any tag though it currently has no real meaning.
+In BBCode (formatting and parsing) any tag with an attribute with the same name can _self-attribute_: `[url url=""][/url]` or `[url=""][/url]`
 
-```js
-let attribute = new AttributeDefinition( 'url' );
-let tag = new TagDefinition( 'url', null, attribute );
-```
-Notice this defines a tag with an attribute of the same name. This allows the tag to be its *own* attribute during parsing.
+### Formatting
+`TagDefinition` and `AttributeDefinition` both take _formatters_ that handle the processing of the tag when changing from one format to another (bbcode<->html).
 
-*Use:* `[url url=""][/url]` or `[url=""][/url]`
-
-
-## Formatting
-`TagDefinition` and `AttributeDefinition` automatically add bbcode formatters when constructed but for this to be of any real use we need to get `html` out. The next parameter in these classes takes a formatter (or array of formatters) to do this.
-
-The basic html formatters (`HtmlTagFormatter` & `HtmlAttrFormatter`) take just a `name` to use when converting to html.
-
+The basic html formatters (`HtmlTagFormatter` & `HtmlAttrFormatter`) take a `name` to use when converting to html.
 ```js
 import {HtmlTagFormatter, HtmlAttrFormatter} from 'bbcode/html';
 // ... other imports
 
-let attribute = new AttributeDefinition( 'url', new HtmlAttrFormatter('href') );
-let tag = new TagDefinition( 'url', null, attribute, new HtmlTagFormatter('a') );
+let attribute = new AttributeDefinition( 'url', new HtmlAttrFormatter('href') );    // change `url` (attribute) to `href` when formatting to HTML
+let tag = new TagDefinition( 'url', null, attribute, new HtmlTagFormatter('a') );   // change `[url]` to `<a>`
 ```
 
-The `url` attribute will be changed to `href` in html and the `url` tag will become `a`.
-
-
-## Create a parser
+## Creating the main parser
 
 ```js
 import {Parser} from 'bbcode/parser';
 import {TagParser} from 'bbcode/tag-parser';
 
 // defined tag above
-
 let parser = new Parser(new TagParser(tag));    
 ```
 
-The main `Parser` does the parsing until it finds a tag and then hands the parsing off to the `TagParser`.
+The main `Parser` handles sub parsers and manages the node tree.
+
+## Custom Parsing
+
+The main parser can take any number of sub-parsers and they will be attempted in order while parsing the source string. 
+
+The only requirement of a custom parser is that two methods are defined: `can_parse` and `parse`.
+```js
+class CustomParser
+{
+    can_parse( iter )
+    {
+        // return true || false
+    }
+
+    parse( iter, parser )
+    {
+    }
+}
+```
+
+These methods are passed a [string_iter](../src/string_iter.js) as the first argument. `string_iter` is a simple iterator class that contains and steps over the source string.
+```js
+import {string_iter} from 'string_iter';
+
+let i = new string_iter( 'aビシd' );
+i.value; // 'a'
+i.next();
+i.next()
+i.value; // シ
+
+i.done; // will be true of at the end of the source string
+```
+The main parser will call the `can_parse` method for each character and will call `parse` with the same iterator if `true` is returned.
+
+If the parser finds that it isn't parsing a valid node it should return a `null` or throw a [`ParserError`](../src/error.js) with a reason.
+
+### Example: Emoji parser
+An emoji is defined as some non-whitespace text between colons (`:`).
+
+```js
+/* emoji-parser.js */
+import {substring_quoted} from 'string-iter';
+
+export class EmojiParser
+{
+    can_parse( iter )
+    {
+        return (iter.value === ':'); // quick initial test; this will be called often so best to keep it short and quick!
+    }
+
+    parse( iter, parser )
+    {
+        // attempt to scan to another `:`
+        let name = substring_quoted( itr, parser.whitespace );
+
+        if ( !name ) { return null; } // no valid name.
+
+        // imagine EmojiNode is some class that when asked to format html returns an img tag or the original :emoji: text for bbcode
+        return new EmojiNode( name );
+    }
+}
+```
+
+Here a `null` is returned when the parse fails. This means the failure will be ignored by the parent parser and any parsing done will be ignored. In more complex parsers it may be desirable to report an error when a node parse fails. In such cases `throw` a [`NodeParseError`](../src/error.js) and it will be stored in a error list.
+
+### Using Custom Parsers
+```js
+import {EmojiParser} from 'emoji-parser';
+import {bbcode_parser} from 'config-bb';
+
+let parser = new Parser([bbcode_parser, new EmojiParser()]);
+```
+
+Note that sub-parsers will be attempted in order.
+
 
 ### Using
 Read the [using](using.md) guide on using your new config/parser setup.
 
-
-### Advanced
-There are other formatters and definitions available to allow somewhat more advanced tags and formatting.
 
 #### Html Formatters
 [*html.js*](../src/html.js)
@@ -86,4 +136,3 @@ There are other formatters and definitions available to allow somewhat more adva
   * `ColorStyleAttrFormatter` - Like the style formatter used when mapped to a color property. Like the URL formatter the color will be put through a sanitizer for `names`, `#xxx`, `#xxxxxx` and `rgb(#,#,#)` style colors.
   * `NumberStyleAttrFormatter` - Formatter for styles that require numbers and units like `font-size`.
 
-*(wip) check the source for more ideas.*  
