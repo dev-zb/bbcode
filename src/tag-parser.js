@@ -33,7 +33,7 @@ export class TagAttribute
         return this.def && this.def.valid_value(this.value);
     }
 
-    get name() { return this.def.name; }
+    get identifier() { return this.def.identifier; }
 
     format( format )
     {
@@ -84,15 +84,15 @@ export class TagNode extends ContainerNode
     {
         if ( attr && this.def.valid_attribute( attr ) )
         {
-            this.attributes.set( attr.name, attr );
+            this.attributes.set( attr.identifier, attr );
             return true;
         }
         return false;
     }
 
-    get name()
+    get identifier()
     {
-        return this.def.name;
+        return this.def.identifier;
     }
 
     get is_void ()
@@ -112,7 +112,7 @@ export class TagNode extends ContainerNode
 
     /*compare( to )
     {
-        return this.def.name === to.def.name || this.def.closing_name === to.def.name;
+        return this.def.identifier === to.def.identifier || this.def.closing_identifier === to.def.identifier;
     }*/
 
     clone( deep = false )
@@ -139,7 +139,7 @@ export class TagNode extends ContainerNode
         {
             if ( node instanceof TagNode )
             {
-                return this.def.terminate.has( node.name );
+                return this.def.terminate.has( node.identifier );
             }
             else
             if ( typeof node === 'string' )
@@ -160,7 +160,7 @@ export class TagParser
     _default_formatters = {};
 
     _tag_defs = new Map();        // tag definitions
-    _valid_chars = new Set();     // valid tag name characters. compiled from the given tag defs.
+    _valid_chars = new Set();     // valid tag identifier characters. compiled from the given tag defs.
 
     fail = {
         illegal_attribute: false
@@ -220,9 +220,9 @@ export class TagParser
         }
     }
 
-    static _default_create_def( name )
+    static _default_create_def( identifier )
     {
-        return new TagDefinition( name );
+        return new TagDefinition( identifier );
     }
 
     static _default_create_tag( def, closing, line, column )
@@ -248,13 +248,13 @@ export class TagParser
 
     add_tag( def )
     {
-        this._tag_defs.set( def.name, def );
+        this._tag_defs.set( def.identifier, def );
     }
 
-    remove_tag( name )
+    remove_tag( identifier )
     {
-        let def = this._tag_defs.get(name);
-        this._tag_defs.delete(name);
+        let def = this._tag_defs.get(identifier);
+        this._tag_defs.delete(identifier);
         return def;
     }
 
@@ -275,10 +275,10 @@ export class TagParser
 
     _attribute_parse( itr, tag, parser )
     {
-        let name = parser.identifier_parse(itr);
-        if ( !name ) throw new NodeParseError( `Invalid attribute name (${name}) in tag`, tag );
+        let identifier = parser.identifier_parse(itr);
+        if ( !identifier ) throw new NodeParseError( `Invalid attribute identifier (${identifier}) in tag`, tag );
 
-        let adef = tag.def.get_attribute(name); // adef may be undefined/null; continue parsing to skip value.
+        let adef = tag.def.get_attribute(identifier); // adef may be undefined/null; continue parsing to skip value.
         let attrib = this.create_attribute( null, adef, tag, itr.line, itr.column );
 
         parser.skip_whitespace( itr );
@@ -286,7 +286,7 @@ export class TagParser
         {
             if ( !adef )
             {
-                if ( this.fail.illegal_attribute ) throw new NodeParseError( `Attribute "${name}" is not allowed in tag`, tag );
+                if ( this.fail.illegal_attribute ) throw new NodeParseError( `Attribute "${identifier}" is not allowed in tag`, tag );
                 return null;
             }
             if ( !attrib.is_valid() ) throw new NodeParseError( `Attribute missing required value`, attrib );
@@ -298,7 +298,7 @@ export class TagParser
 
             if ( !adef )
             {
-                if ( this.fail.illegal_attribute ) throw new NodeParseError( `Attribute "${name}" is not allowed in tag`, tag );
+                if ( this.fail.illegal_attribute ) throw new NodeParseError( `Attribute "${identifier}" is not allowed in tag`, tag );
                 return null;
             }
             if ( !attrib.is_valid() ) throw new NodeParseError( `Attribute missing required value`, attrib );
@@ -307,7 +307,7 @@ export class TagParser
         return attrib;
     }
 
-    parse_name( itr, parser )
+    parse_identifier( itr, parser )
     {
         let it = itr.clone();
         while ( !itr.end() && (valid_identifier( itr.value ) || this._valid_chars.has( itr.value )) )
@@ -318,22 +318,22 @@ export class TagParser
         return substring( it, itr ).toLowerCase();
     }
 
-    _get_def( name, itr, parser )
+    _get_def( identifier, itr, parser )
     {
-        if ( !name ) throw new NullError();
+        if ( !identifier ) throw new NullError();
 
-        let def = this._tag_defs.get( name );
+        let def = this._tag_defs.get( identifier );
         if ( !def )
         {
             if ( this.parse_any )
             {
                 if ( parser.is_whitespace(itr.value) || itr.value == this._format.r_bracket || (this.self_attribute && itr.value === '=') )
                 {
-                    return this.create_def( name );
+                    return this.create_def( identifier );
                 }
             }
 
-            throw new NodeParseError( `Invalid tag name`, name, itr.line, itr.column );
+            throw new NodeParseError( `Invalid tag identifier`, identifier, itr.line, itr.column );
         }
 
         return def;
@@ -357,14 +357,14 @@ export class TagParser
         // check for missing required attributes.
         if( tag.def.attributes )
         {
-            for( let [name, a] of tag.def.attributes )
+            for( let [identifier, a] of tag.def.attributes )
             {
-                if ( a.required && !tag.attributes.has(name) )
+                if ( a.required && !tag.attributes.has(identifier) )
                 {
                     let ta = new TagAttribute( null, a, tag);
 
                     // required attribute could not be met.
-                    if ( !ta.is_valid() ) throw new NodeParseError( `Missing required attribute (${name}) or value`, tag );
+                    if ( !ta.is_valid() ) throw new NodeParseError( `Missing required attribute (${identifier}) or value`, tag );
 
                     tag.add_attribute( ta );
                 }
@@ -392,8 +392,8 @@ export class TagParser
         }
 
         let it = itr.clone(); // might need to set back
-        let name = this.parse_name( itr, parser );
-        let def = this._get_def( name, itr, parser );
+        let identifier = this.parse_identifier( itr, parser );
+        let def = this._get_def( identifier, itr, parser );
         let tag = this.create_tag( def, closing, itr.line, itr.column );
 
         if ( !closing )
@@ -401,7 +401,7 @@ export class TagParser
             // allow tags to be their own attribute
             if ( itr.value === this._format.eq && this._format.self_attribute )
             {
-                itr.set( it ); // set back to parse tagname as attribute
+                itr.set( it ); // set back to parse tagidentifier as attribute
             }
             this._parse_attributes( tag, itr, parser );
         }

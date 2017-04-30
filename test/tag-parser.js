@@ -52,7 +52,7 @@ test( 'parse all tags', async t => {
     let tag = await parser.parse( new itr_ex( '[a b=c]' ), new Parser() );
 
     t.true( tag instanceof TagNode );
-    t.is( tag.def.name, 'a' );
+    t.is( tag.def.identifier, 'a' );
 } );
 
 test( 'parses attributes', async t => {

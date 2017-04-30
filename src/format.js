@@ -11,12 +11,12 @@ export class Format
         self_attribute: false
     };
 
-    constructor( name = '', props = {} )
+    constructor( identifier = '', props = {} )
     {
-        this.name = name;
+        this.identifier = identifier;
         Object.assign( this, Format.default_props, props );
 
-        TextNode.add_sanitizer( this.name, props.text_sanitize || no_san );
+        TextNode.add_sanitizer( this.identifier, props.text_sanitize || no_san );
     }
 
     get l_bracket() { return this.brackets[0]; }
@@ -24,7 +24,7 @@ export class Format
 
     sanitize( text )
     {
-        TextNode.sanitize( this.name, text );
+        TextNode.sanitize( this.identifier, text );
     }
 }
 

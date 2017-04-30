@@ -37,13 +37,13 @@ test( 'valid bbcode', async t => {
     t.is( r.children.length, 1 );
 
     let c = r.children[0];
-    t.is( c.name, 'a' );
+    t.is( c.identifier, 'a' );
     t.is( c.children.length, 3 );
 
     t.true( c.children[0] instanceof TextNode && c.children[2] instanceof TextNode );
 
     c = c.children[1];
-    t.is( c.name, 'b' );
+    t.is( c.identifier, 'b' );
     t.is( c.children.length, 1 );
 } );
 
@@ -55,11 +55,11 @@ test( 'misnesting with overflow', async t => {
     t.true( r.children[0] instanceof TagNode && r.children[1] instanceof TagNode );
 
     let c = r.children[0];
-    t.is( c.name, 'a' );
+    t.is( c.identifier, 'a' );
     t.is( c.children.length, 2 );
 
     c = r.children[1];
-    t.is( c.name, 'b' );
+    t.is( c.identifier, 'b' );
     t.is( c.children.length, 1 );
 } );
 
@@ -74,7 +74,7 @@ test( 'misnesting without overflow', async t => {
     t.is( n.children.length, 2 );
     t.true( n.children[1] instanceof TagNode );
 
-    t.is( n.children[1].name, 'nov' );
+    t.is( n.children[1].identifier, 'nov' );
 });
 
 test( 'void tags', async t => {

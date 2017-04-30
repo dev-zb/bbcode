@@ -12,9 +12,9 @@ export let bbcode_format = new Format( 'bbcode', { brackets: ['[', ']'], self_at
  */
 export class BBCodeAttrFormatter extends AttributeFormatter
 {
-    constructor( name )
+    constructor( identifier )
     {
-        super( name, bbcode_format );
+        super( identifier, bbcode_format );
     }
 }
 
@@ -23,13 +23,13 @@ export class BBCodeAttrFormatter extends AttributeFormatter
  */
 export class BBCodeTagFormatter extends MarkupTagFormatter
 {
-    constructor( tag_name, props )
+    constructor( tag_identifier, props )
     {
-        super( tag_name, bbcode_format, props );
+        super( tag_identifier, bbcode_format, props );
     }
     
     format( def, children, attributes )
     {
-        return this.format_markup( def, children, attributes, attributes.has( this.name ) ? '' : this.name );
+        return this.format_markup( def, children, attributes, attributes.has( this.identifier ) ? '' : this.identifier );
     }
 }

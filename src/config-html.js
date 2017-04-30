@@ -70,11 +70,11 @@ class ClassFormatter extends HtmlAttrFormatter
  *  ATTRIBUTES
  * ============
  */
-function _a( name, p ) { return new AttributeDefinition( name, new HtmlAttrFormatter( name ), p ); }
-function _u( name, p ) { return new UrlAttrDefinition( name, new UrlAttrFormatter( name ), p ); }
-function _n( name, min = Number.MIN_VALUE, max = Number.MAX_VALUE, p = {} ) { return new NumberAttrDefinition( name, min, max, new HtmlAttrFormatter( name ), p ); }
-function _l( name, list, def = 0, r = true, p = {} ) { return new ListAttrDefinition( name, list, new HtmlAttrFormatter( name ), Object.assign(p, { default_index: def, required: r }) ); }
-function _b( name, r = false, p = {} ) { return _l( name, [name, ''], 0, r, Object.assign( p, { require_value: false } ) ); }
+function _a( identifier, p ) { return new AttributeDefinition( identifier, new HtmlAttrFormatter( identifier ), p ); }
+function _u( identifier, p ) { return new UrlAttrDefinition( identifier, new UrlAttrFormatter( identifier ), p ); }
+function _n( identifier, min = Number.MIN_VALUE, max = Number.MAX_VALUE, p = {} ) { return new NumberAttrDefinition( identifier, min, max, new HtmlAttrFormatter( identifier ), p ); }
+function _l( identifier, list, def = 0, r = true, p = {} ) { return new ListAttrDefinition( identifier, list, new HtmlAttrFormatter( identifier ), Object.assign(p, { default_index: def, required: r }) ); }
+function _b( identifier, r = false, p = {} ) { return _l( identifier, [identifier, ''], 0, r, Object.assign( p, { require_value: false } ) ); }
 
 let style       = new AttributeDefinition( 'style', new StyleFormatter() );
 let css         = new AttributeDefinition( 'class', new ClassFormatter() );
@@ -155,9 +155,9 @@ let global = [style, css, title, tabindex, id];
  *  ELEMENTS
  * ==========
  */
-function t( name, el, attr = [], props = {} )
+function t( identifier, el, attr = [], props = {} )
 {
-    return new TagDefinition( name, el, global.concat(attr), new HtmlTagFormatter(name), props );
+    return new TagDefinition( identifier, el, global.concat(attr), new HtmlTagFormatter(identifier), props );
 }
 
 let elements = [

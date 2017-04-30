@@ -38,12 +38,12 @@ export let html_format = new Format( 'html', { quote: '"',
 export class HtmlAttrFormatter extends AttributeFormatter
 {
     /**
-     * @param name tag name when converted to html
+     * @param identifier tag identifier when converted to html
      * @param props optional object with extra properties.
      */
-    constructor( name, props )
+    constructor( identifier, props )
     {
-        super( name, html_format, props );
+        super( identifier, html_format, props );
     }
 }
 
@@ -56,9 +56,9 @@ export class UrlAttrFormatter extends HtmlAttrFormatter
     // default url sanitize regex
     regex = /^((?:ht|f)tp(?:s?)\:\/\/[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?)$/;
 
-    constructor( name, props )
+    constructor( identifier, props )
     {
-        super( name, props );
+        super( identifier, props );
     }
 
     /**
@@ -83,21 +83,21 @@ export class UrlAttrFormatter extends HtmlAttrFormatter
 export class StyleAttrFormatter extends HtmlAttrFormatter
 {
     /**
-     * @param style_name name of the css property
+     * @param style_identifier identifier of the css property
      */
-    constructor( style_name, props )
+    constructor( style_identifier, props )
     {
         super( 'style', props );
-        this.style_name = style_name;
+        this.style_identifier = style_identifier;
     }
 
     /**
-     * @return string style_name: value;
+     * @return string style_identifier: value;
      */
     format( value )
     {
         let v = super.format( value );
-        v.value = `${this.style_name}: ${v.value};`;
+        v.value = `${this.style_identifier}: ${v.value};`;
         return v;
     }
 }
@@ -222,11 +222,11 @@ export class ClassAttrFormatter extends HtmlAttrFormatter
 export class HtmlTagFormatter extends MarkupTagFormatter
 {
     /**
-     * @param tag_name name of the tag when converted to html
+     * @param tag_identifier identifier of the tag when converted to html
      */
-    constructor( tag_name, attributes, props )
+    constructor( tag_identifier, attributes, props )
     {
-        super( tag_name, html_format, attributes, props );
+        super( tag_identifier, html_format, attributes, props );
     }
 }
 
@@ -235,9 +235,9 @@ export class HtmlTagFormatter extends MarkupTagFormatter
  */
 export class HtmlCTATagFormatter extends HtmlTagFormatter
 {
-    constructor( tag_name, required, alt, attributes, props )
+    constructor( tag_identifier, required, alt, attributes, props )
     {
-        super( tag_name, attributes, props );
+        super( tag_identifier, attributes, props );
 
         this.required = required;   // of required attribute that will steal the content (if possible)
         this.alt = alt;             // use content as an alternate attribute is required exists [null/undefined = leave content as content]
@@ -262,12 +262,12 @@ export class HtmlCTATagFormatter extends HtmlTagFormatter
                 }
                 else if ( this.alt instanceof AttributeDefinition )
                 {
-                    _attr.set( this.alt.name, new TagAttribute( value, this.alt ) );
+                    _attr.set( this.alt.identifier, new TagAttribute( value, this.alt ) );
                 }
                 else if ( this.alt instanceof AttributeFormatter )
                 {
-                    let f = new AttributeDefinition( this.alt.name, true, this.alt );
-                    _attr.set( this.alt.name, new TagAttribute( value, f ) );
+                    let f = new AttributeDefinition( this.alt.identifier, true, this.alt );
+                    _attr.set( this.alt.identifier, new TagAttribute( value, f ) );
                 }
 
                 return super.format( def, children, _attr );
@@ -291,9 +291,9 @@ export class HtmlCTATagFormatter extends HtmlTagFormatter
  */
 export class HeaderTagFormatter extends HtmlTagFormatter
 {
-    constructor( name, def, attributes, props )
+    constructor( identifier, def, attributes, props )
     {
-        super( name, attributes, props );
+        super( identifier, attributes, props );
 
         this.def = def; // attribute definition
     }
@@ -304,7 +304,7 @@ export class HeaderTagFormatter extends HtmlTagFormatter
 
         let tag = new TagNode( this.def );
 
-        tag.add_child( new TextNode( attributes.has(def.name) ? attributes.get(def.name).value : def.name ) );
+        tag.add_child( new TextNode( attributes.has(def.identifier) ? attributes.get(def.identifier).value : def.identifier ) );
 
         _children.push( tag );
 
@@ -313,27 +313,27 @@ export class HeaderTagFormatter extends HtmlTagFormatter
 }
 
 /**
- * joins an attribute value with the name to create a tag.
+ * joins an attribute value with the identifier to create a tag.
  */
 export class AttrJoinTagFormatter extends HtmlTagFormatter
 {
-    constructor( name, attr_name, attributes, props = { format_value: true } )
+    constructor( identifier, attr_identifier, attributes, props = { format_value: true } )
     {
-        super( name, attributes, props );
-        this.attr_name = attr_name;
+        super( identifier, attributes, props );
+        this.attr_identifier = attr_identifier;
     }
 
     format( def, children, attributes )
     {
 
         let val = this.default_value;
-        if ( !attributes.has(this.attr_name) )
+        if ( !attributes.has(this.attr_identifier) )
         {
             if ( this.default_value === undefined || this.default_value === null ) { return ''; }
         }
         else
         {
-            let attr = attributes.get(this.attr_name); 
+            let attr = attributes.get(this.attr_identifier); 
             if ( this.format_value )
             {
                 let result = attr.format( this.format_type.name );
@@ -351,8 +351,8 @@ export class AttrJoinTagFormatter extends HtmlTagFormatter
             else if ( !val && this.default_value === undefined ) { return ''; }
         }
 
-        let name = `${this.name}${val}`;
-        return super.format_markup( def, children, attributes, name, name );
+        let identifier = `${this.identifier}${val}`;
+        return super.format_markup( def, children, attributes, identifier );
     }
 }
 
@@ -400,8 +400,8 @@ export class ContentWrapTagFormatter extends BaseFormatter
 export class HtmlTagDef extends TagDefinition
 {
     // a_or_f : attributes or a formatter.
-    constructor( name, a_or_f, props )
+    constructor( identifier, a_or_f, props )
     {
-        super( name, null, null, a_or_f instanceof BaseFormatter ? a_or_f : new HtmlTagFormatter( name, a_or_f ), props ); 
+        super( identifier, null, null, a_or_f instanceof BaseFormatter ? a_or_f : new HtmlTagFormatter( identifier, a_or_f ), props ); 
     }
 }

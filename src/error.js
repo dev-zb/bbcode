@@ -33,12 +33,12 @@ export class NodeParseError extends ParseError
                consume
              );
         
-        this.node_name = node.name || '';
+        this.node_identifier = node.identifier || '';
     }
 
     toString()
     {
-        return super.toString() + ` (${this.node_name})`;
+        return super.toString() + ` (${this.node_identifier})`;
     }
 }
 

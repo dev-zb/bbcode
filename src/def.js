@@ -5,9 +5,9 @@ import {is_array, is_func, ensure_array} from './helper';
 
 export class AttrPair
 {
-    constructor( name, value )
+    constructor( identifier, value )
     {
-        this.name = name;
+        this.identifier = identifier;
         this.value = value;
     }
 }
@@ -28,15 +28,15 @@ export class BaseFormatter
  */
 export class AttributeFormatter extends BaseFormatter
 {   
-    constructor( name, format_type, props = {} )
+    constructor( identifier, format_type, props = {} )
     {
         super( format_type, props );
-        this.name = name;
+        this.identifier = identifier;
     }
 
     format( value )
     {
-        return new AttrPair(this.name, this.sanitize(value));
+        return new AttrPair(this.identifier, this.sanitize(value));
     }
 
     sanitize( value )
@@ -58,18 +58,18 @@ export class AttributeDefinition
 {
     static require_value_default = true;
 
-    name;
+    identifier;
 
     required = false;   // lets parser know that this attribute is required. the parser will attempt to create it when missing.
 
     require_value = AttributeDefinition.require_value_default;  // lets the parser know a value is required to be a valid attribute
     default_value = null;                                       // default value to set if required_value and value is null/undefined
 
-    constructor( name, formatter = null, props = {} )
+    constructor( identifier, formatter = null, props = {} )
     {
         Object.assign( this, props );
 
-        this.name = name;
+        this.identifier = identifier;
 
         this.formatters = new Map();
         if ( formatter )
@@ -140,9 +140,9 @@ export class AttributeDefinition
  */
 export class ColorAttrDefinition extends AttributeDefinition
 {
-    constructor( name, formats, props )
+    constructor( identifier, formats, props )
     {
-        super( name, formats, props );
+        super( identifier, formats, props );
     }
 
     valid_char( chr, start )
@@ -157,9 +157,9 @@ export class ColorAttrDefinition extends AttributeDefinition
 export class UrlAttrDefinition extends AttributeDefinition
 {
     static valid = './:%_-&*$?';
-    constructor( name, formats, props )
+    constructor( identifier, formats, props )
     {
-        super( name, formats, props );
+        super( identifier, formats, props );
     }
 
     valid_char( ch )
@@ -173,9 +173,9 @@ export class UrlAttrDefinition extends AttributeDefinition
  */
 export class NumberAttrDefinition extends AttributeDefinition
 {
-    constructor( name, min, max, formats, props )
+    constructor( identifier, min, max, formats, props )
     {
-        super( name, formats, props );
+        super( identifier, formats, props );
         this.min = min;
         this.max = max;
     }
@@ -199,9 +199,9 @@ export class NumberAttrDefinition extends AttributeDefinition
  */
 export class ListAttrDefinition extends AttributeDefinition
 {
-    constructor( name, valid_values, formats, props )
+    constructor( identifier, valid_values, formats, props )
     {
-        super(name, formats, props );
+        super(identifier, formats, props );
 
         this.valid_values = ensure_array( valid_values ); // list of valid values.   
     }
@@ -219,10 +219,10 @@ export class ListAttrDefinition extends AttributeDefinition
  */
 export class TagFormatter extends BaseFormatter
 {
-    constructor( tag_name, format_type, props )
+    constructor( identifier, format_type, props )
     {
         super( format_type, props );
-        this.name = tag_name;
+        this.identifier = identifier;
     }
 
     /**
@@ -255,9 +255,9 @@ export class TagFormatter extends BaseFormatter
 
 export class MarkupTagFormatter extends TagFormatter
 {
-    constructor( tag_name, format_type, attributes, props )
+    constructor( identifier, format_type, attributes, props )
     {
-        super( tag_name, format_type, props );
+        super( identifier, format_type, props );
         this.attributes = ensure_array( attributes );
     }
 
@@ -266,7 +266,7 @@ export class MarkupTagFormatter extends TagFormatter
         // expect attribute === AttrPair / TagAttribute
         let a_v;
         if ( attribute instanceof TagAttribute ) { a_v = ensure_array(attribute.format( this.format_type.name )); }
-        else { a_v = [attribute]; } // assume object {name/value} or AttrPair
+        else { a_v = [attribute]; } // assume object {identifier/value} or AttrPair
 
         let attribs = [];
         for( let attr of a_v )
@@ -279,16 +279,16 @@ export class MarkupTagFormatter extends TagFormatter
             {
                 attribs.push( attr );
             }
-            else if ( attr && attr.name )
+            else if ( attr && attr.identifier )
             {
-                if ( map.has( attr.name ) ) // some parsed attributes might map to the same converted attribute (style,class...). (many-to-one)
+                if ( map.has( attr.identifier ) ) // some parsed attributes might map to the same converted attribute (style,class...). (many-to-one)
                 {
-                    let v = map.get( attr.name );
+                    let v = map.get( attr.identifier );
                     v.value.push( attr.value );
                 }
                 else 
                 {
-                    map.set( attr.name, { 
+                    map.set( attr.identifier, { 
                         quote: this.format_type.quote === null ? attribute.quote || '' : this.format_type.quote, //!!quote ? quote : attr.quote, 
                         value: [attr.value]
                     });
@@ -313,7 +313,7 @@ export class MarkupTagFormatter extends TagFormatter
 
         attr_stack.pop_each( attrib => attr_stack.push_many( this.format_attribute( attrib, attr_map, children) ) );
 
-        // combine attribute names & values
+        // combine attribute identifiers & values
         let attribs = [];
         for( let [k, a] of attr_map )
         {
@@ -331,9 +331,9 @@ export class MarkupTagFormatter extends TagFormatter
         return [attribs.join( ' ' ), children];
     }
 
-    format_tag( attributes, name, close = '' )
+    format_tag( attributes, identifier, close = '' )
     {
-        if ( name === null ) { return ['', ]; }
+        if ( identifier === null ) { return ['', ]; }
 
         let attribs = '';
         let temp_children = [];
@@ -342,20 +342,20 @@ export class MarkupTagFormatter extends TagFormatter
             [attribs, temp_children] = this.format_attributes( attributes );
         }
 
-        let mid = `${name} ${attribs}`.trim();
+        let mid = `${identifier} ${attribs}`.trim();
 
         return [`${this.format_type.l_bracket}${close}${mid}${this.format_type.r_bracket}`, temp_children];        
     }
 
-    format_markup( def, children, attributes, open_name, close_name )
+    format_markup( def, children, attributes, identifier = this.identifier )
     {
+        let [open_ident, close_ident] = is_array(identifier) ? identifier : [identifier,identifier];
+
         let open_tag = '';
         let close_tag = '';
         let temp_children = [];
 
-        if ( open_name === undefined ) { open_name = this.name; }
-
-        [open_tag, temp_children] = this.format_tag( attributes, open_name );
+        [open_tag, temp_children] = this.format_tag( attributes, open_ident );
 
         let _void = this.is_void !== undefined ? this.is_void : def.is_void;
         if ( _void )
@@ -371,20 +371,20 @@ export class MarkupTagFormatter extends TagFormatter
             c_str = def.content_parser( this.format_type, c_str );
         }
 
-        [close_tag, temp_children] = this.format_tag( null, (close_name === undefined ? this.name : close_name), '/' );
+        [close_tag, temp_children] = this.format_tag( null, close_ident, '/' );
 
         return `${open_tag}${c_str}${close_tag}`;
     }
 
     format( def, children, attributes )
     {
-        return this.format_markup( def, children, attributes, this.name );
+        return this.format_markup( def, children, attributes, this.identifier );
     }
 }
 
 export class TagDefinition
 {
-    name;       // tag name
+    identifier;       // tag identifier
     is_void = false;    // tag is self-closing
     overflow = true;   // if parent terminates before this tag: true start again in next parent; false terminate with current parent.
     terminate;  // other tags that cause this one to terminate/close.
@@ -403,22 +403,22 @@ export class TagDefinition
 
     /**
      * Constructor
-     * @param {*} name name of the tag (in its origin format)
-     * @param {*} children allowed child tags: null = all; otherwise pass an array of tag names
+     * @param {*} identifier identifier of the tag (in its origin format)
+     * @param {*} children allowed child tags: null = all; otherwise pass an array of tag identifiers
      * @param {*} attributes allowed attributes: null = all, otherwise pass an array of attribute definitions
      * @param {*} formats format converters
      * @param {*} props { other, properties }
      */
-    constructor( name, children = null, attributes = null, formats = null, props = {} )
+    constructor( identifier, children = null, attributes = null, formats = null, props = {} )
     {
-        if ( !name ) 
+        if ( !identifier ) 
         {
-            throw new Error('TagDefinition requires a name.');
+            throw new Error('TagDefinition requires a identifier.');
         }
 
         Object.assign( this, props );
 
-        this.name = name;
+        this.identifier = identifier;
 
         if ( is_array( children ) ) { this.children = new Set( children ); }
         else if ( children instanceof Set ) { this.children = children; }
@@ -428,7 +428,7 @@ export class TagDefinition
         {
             for( let a of attributes )
             {
-                this.attributes.set( a.name, a );
+                this.attributes.set( a.identifier, a );
             }
         }
         else if ( !attributes )
@@ -487,14 +487,14 @@ export class TagDefinition
     valid_child( node )
     {
         if ( this.is_void ) { return false; }
-        if ( this.terminate && this.terminate.has( node.name ) ) { return node; }
+        if ( this.terminate && this.terminate.has( node.identifier ) ) { return node; }
 
         if ( node instanceof TextNode && node.length <= 0 ) { return false; }   // no empty text. 
 
         let def = node.def || node;
         if ( def instanceof TagDefinition )
         {
-            return (!this.children || this.children.has( def.name )) && def.valid_parent( this );
+            return (!this.children || this.children.has( def.identifier )) && def.valid_parent( this );
         }
 
         if ( !this.type_child ) { return true; }
@@ -511,42 +511,42 @@ export class TagDefinition
     {
         if ( !this.parents ) { return this.parents_allow; }
 
-        let name;
-        if ( typeof tag === 'string' ) { name = tag; }
-        else if ( tag instanceof TagDefinition || tag.name ) { name = tag.name; }
-        else if ( tag.def ) { name = tag.def.name; }
+        let identifier;
+        if ( typeof tag === 'string' ) { identifier = tag; }
+        else if ( tag instanceof TagDefinition || tag.identifier ) { identifier = tag.identifier; }
+        else if ( tag.def ) { identifier = tag.def.identifier; }
 
-        return this.parents.has( name ) ? this.parents_allow : !this.parents_allow;
+        return this.parents.has( identifier ) ? this.parents_allow : !this.parents_allow;
     }
 
     valid_attribute( attr )
     {
         if ( this.__allow_all_attributes ) { return true; }
 
-        let name = '';
-        if ( typeof attr === 'string' ) { name = attr; }
-        else if ( attr instanceof AttributeDefinition || attr.name ) { name = attr.name; }
-        else if ( attr.def ) { name = attr.def.name; }
+        let identifier = '';
+        if ( typeof attr === 'string' ) { identifier = attr; }
+        else if ( attr instanceof AttributeDefinition || attr.identifier ) { identifier = attr.identifier; }
+        else if ( attr.def ) { identifier = attr.def.identifier; }
 
-        return this.attributes.has( name );
+        return this.attributes.has( identifier );
     }
 
     // get attribute def
-    get_attribute( name )
+    get_attribute( identifier )
     {
             // null/undefined attributes means all are allowed.
-        if ( this.__allow_all_attributes && !this.attributes.has( name ) )
+        if ( this.__allow_all_attributes && !this.attributes.has( identifier ) )
         {
                 // create definitions as needed.
-            let def = new AttributeDefinition( name );
+            let def = new AttributeDefinition( identifier );
             for( let [, f] of this.formats )
             {
-                def.add_formatter( new AttributeFormatter( name, f.format_type ) );
+                def.add_formatter( new AttributeFormatter( identifier, f.format_type ) );
             }
-            this.attributes.set( name, def );
+            this.attributes.set( identifier, def );
             return def;   
         }
 
-        return this.attributes.get( name );
+        return this.attributes.get( identifier );
     }
 }
