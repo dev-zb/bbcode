@@ -1,49 +1,44 @@
-import {VoidNode} from './nodes';
+import {Node} from './nodes';
 
 
-export class PingNode extends VoidNode
+export class PingNode extends Node
 {
-    static formats = new Map();
+    static formatters = new Map();
 
-    static add_format( fmt )
+    static add_formatter( fmtr )
     {
-        PingNode.formats.set( fmt.name, fmt );
+        PingNode.formatters.set( fmtr.name, fmtr );
     }
 
-    name;
-    constructor( name )
+    target;
+    constructor( target )
     {
         super(); 
-        this.name = name; 
+        this.target = target; 
     }
 
     format( format )
     {
         if ( PingNode.formats.has(format) )
         {
-            return PingNode.formats.get(format).format( this.name );
+            return PingNode.formats.get(format).format( this.target );
         }
 
-        return `@${this.name}`;
+        return `@${this.target}`;
     }
 }
 
-
 export class PingParser
 {
-    constructor()
-    {
-    }
-
     can_parse( itr ) { return itr.value === '@'; }
 
     parse( itr, parser )
     {
         itr.next(); // skip '@'
 
-        let name = parser.identifier_parse( itr );
-        if ( !name || !name.length ) return null;
+        let target = parser.identifier_parse( itr );
+        if ( !target || !target.length ) return null;
 
-        return new PingNode( name );
+        return new PingNode( target );
     }
 }

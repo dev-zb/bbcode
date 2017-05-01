@@ -15,7 +15,7 @@ export class Node
 
     def = null;
 
-    constructor( props = { format: 'bbcode' } ) //def, format = 'bbcode' )
+    constructor( props = { format: 'bbcode' } )
     {
         this._origin_format = props.format;
         this.def = props.def;
@@ -36,13 +36,8 @@ export class Node
     }
 }
 
-    // a node without children.
-export class VoidNode extends Node
-{
-}
-
-    // plain text
-export class TextNode extends VoidNode
+   // plain text
+export class TextNode
 {
     static format_sanitizers = new Map();
     static add_sanitizer( name, san )
@@ -64,7 +59,6 @@ export class TextNode extends VoidNode
 
     constructor( start, end )
     {
-        super();
         if ( typeof start === 'string' )
         {
             this._start = new string_iter( start );
@@ -156,9 +150,6 @@ export class ContainerNode extends Node
         }).join( '' );
     }
 }
-
-    // root of parsed result
-export class RootNode extends ContainerNode {}
 
 /**
  * Tells main parser to terminate the current / last node.

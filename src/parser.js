@@ -1,7 +1,7 @@
 import {is_func, ensure_array, valid_identifier} from './helper';
 import {stack} from './stack';
 import {string_iter, substring, scan_while, scan_to} from './string-iter';
-import {RootNode, TextNode, VoidNode, Node} from './nodes';
+import {TextNode, ContainerNode, Node} from './nodes';
 import {ParseError, NodeParseError, NullError} from './error';
 
 export class itr_ex extends string_iter
@@ -101,7 +101,7 @@ export class Parser
      */
     parse( txt )
     {
-        if ( !txt ) { return new RootNode(); }
+        if ( !txt ) { return new ContainerNode(); }
 
         this.errors = [];
         this._position = {
@@ -111,7 +111,7 @@ export class Parser
 
         let itr = new itr_ex( txt, this._position );
 
-        let root_node = new RootNode();
+        let root_node = new ContainerNode();
 
         this.node_stack.clear();
         this.node_stack.push( root_node );
@@ -243,7 +243,7 @@ export class Parser
         // look for [node] in the node_stack. store popped nodes in another stack.
         while ( !found )
         {
-            if ( this.node_stack.back() instanceof RootNode ) break; // root is never removed.
+            if ( this.node_stack.size <= 1 ) break; // root is never removed.
 
             let t = this.node_stack.pop();
             if ( this.compare( node, t ) ) 
@@ -333,7 +333,7 @@ export class Parser
      */
     is_void( node )
     {
-        return node instanceof VoidNode || node.is_void;
+        return node.is_void || !(node instanceof ContainerNode);
     }
 
     /**

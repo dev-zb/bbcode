@@ -1,10 +1,10 @@
-import {Format} from './format';
+import {MarkupFormatProperties} from './format';
 import {AttributeFormatter, MarkupTagFormatter} from './def'
 
 /**
  * BBCode Format
  */
-export let bbcode_format = new Format( 'bbcode', { brackets: ['[', ']'], self_attribute: true } );
+export let bbcode_format = new MarkupFormatProperties( 'bbcode', { brackets: ['[', ']'], self_attribute: true } );
 
 
 /**

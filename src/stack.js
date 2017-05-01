@@ -8,8 +8,7 @@ export class stack
         this.push_many( init );
     }
 
-    get size() { return this.length; }
-    get length() { return this._items.length; }
+    get size() { return this._items.length; }
 
     values() { return this._items; }
     entries() { return this._items; }
@@ -50,7 +49,7 @@ export class stack
 
     forEach( cb )
     {
-        for( let i = this.length - 1; i >= 0; --i )
+        for( let i = this.size - 1; i >= 0; --i )
         {
             cb( this._items[i], i, this );
         }
@@ -71,16 +70,16 @@ export class stack
 
     back()
     {
-        if ( this.length )
+        if ( this.size )
         {
-            return this._items[this.length - 1];
+            return this._items[this.size - 1];
         }
         return null;
     }
     
     front()
     {
-        if ( this.length )
+        if ( this.size )
         {
             return this._items[0];
         }
@@ -89,10 +88,8 @@ export class stack
     
     find( val, compare = (a, b) => a === b )
     {
-        let v;
-        for( let i = this.length - 1; i >= 0; --i )
+        for( let v of this )
         {
-            v = this._items[i];
             if ( compare( val, v ) ) { return v; }
         }
         return null;
@@ -100,20 +97,19 @@ export class stack
 
     any_of( pred )
     {
-        for( let i = this.length - 1; i >= 0; --i )
+        for( let i of this )
         {
-            if ( pred( this._items[i] ) ) { return true; }
+            if ( pred( i ) ) { return true; }
         }
         return false;
     }
 
     all_of( pred )
     {
-        for( let i = this.length - 1; i >= 0; --i )
+        for( let i of this )
         {
-            if ( !pred( this._items[i] ) ) { return false; }
+            if ( !pred( i ) ) { return false; }
         }
-
         return true;
     }
 

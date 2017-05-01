@@ -1,12 +1,12 @@
 import {TextNode} from './nodes';
 import {TagNode, TagAttribute} from './tag-parser';
-import {Format} from './format';
+import {MarkupFormatProperties} from './format';
 import {AttributeFormatter, MarkupTagFormatter, AttributeDefinition, TagDefinition, BaseFormatter} from './def';
 
 /**
  * HTML Format
  */
-export let html_format = new Format( 'html', { quote: '"', 
+export let html_format = new MarkupFormatProperties( 'html', { quote: '"', 
                                     brackets: ['<', '>'], 
                                     text_sanitize: function( text )
                                     {
@@ -232,6 +232,7 @@ export class HtmlTagFormatter extends MarkupTagFormatter
 
 /**
  *  Fill a missing required attribute with the child contents (if possible) 
+ *      ex: [url]value[/url] => <a href="value">value</a>
  */
 export class HtmlCTATagFormatter extends HtmlTagFormatter
 {
