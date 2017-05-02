@@ -1,6 +1,7 @@
 import {is_func, ensure_array, valid_identifier} from './helper';
 import {stack} from './stack';
-import {string_iter, substring, scan_while, scan_to} from './string-iter';
+import {string_iter} from './string-iter';
+import {substring, scan_while, scan_to} from './string-util';
 import {TextNode, ContainerNode, Node} from './nodes';
 import {ParseError, NodeParseError, NullError} from './error';
 

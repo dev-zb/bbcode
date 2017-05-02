@@ -1,4 +1,5 @@
-import {string_iter, substring, scan_to_end} from './string-iter';
+import {string_iter} from './string-iter';
+import {substring, scan_to_end} from './string-util';
 import {is_func} from './helper';
 
 /**

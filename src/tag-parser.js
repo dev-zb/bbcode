@@ -1,6 +1,6 @@
 import {NodeParseError, NullError} from './error';
 import {ContainerNode} from './nodes';
-import {substring, substring_quoted} from './string-iter';
+import {substring, substring_quoted} from './string-util';
 import {ensure_array, valid_identifier} from './helper';
 import {TagDefinition} from './def';
 

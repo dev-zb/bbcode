@@ -1,5 +1,6 @@
 import test from 'ava';
-import {string_iter, substring, substring_quoted, scan_to, scan_while} from '../src/string-iter';
+import {string_iter} from '../src/string-iter';
+import {substring, substring_quoted, scan_to, scan_while} from '../src/string-util';
 
 test( 'stop at string end', t => {
     let itr = new string_iter('abcd');
