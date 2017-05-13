@@ -1,5 +1,5 @@
 import {MarkupFormatProperties} from './format';
-import {AttributeFormatter, MarkupTagFormatter} from './def'
+import {AttributeFormatter, TagFormatter} from './markup-formatter'
 
 /**
  * BBCode Format
@@ -21,15 +21,10 @@ export class BBCodeAttrFormatter extends AttributeFormatter
 /**
  * Basic Tag Formatter
  */
-export class BBCodeTagFormatter extends MarkupTagFormatter
+export class BBCodeTagFormatter extends TagFormatter
 {
     constructor( tag_identifier, props )
     {
         super( tag_identifier, bbcode_format, props );
-    }
-    
-    format( def, children, attributes )
-    {
-        return this.format_markup( def, children, attributes, attributes.has( this.identifier ) ? '' : this.identifier );
     }
 }
