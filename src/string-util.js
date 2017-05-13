@@ -1,5 +1,6 @@
-import {is_map, is_array, is_set, is_string, is_func } from './helper';
-import {string_iter} from './string-iter.js';
+import {get_has} from './util';
+import {string_iter} from './string-iter';
+import {Validator, ListValidator} from './validator';
 
 /*
     Substring using iterators. Expects the iterators refer to the same string.
@@ -13,15 +14,15 @@ export function substring( /*string_iter*/ start, /*string_iter*/ end )
     return '';
 }
 
-/*
+/**
     Scan a quoted chunk of text. Quotes will be whatever the initial character is when called.
-    @param itr string iterator
-    @param invalid an array of any characters that are invalid (not allowed in the quoted area)
+    @param {*} itr string iterator
+    @param {*} invalid any characters that cause failure
 */
 export function substring_quoted( itr, invalid = null )
 {
     let quote = itr.value;
-    if ( invalid !== null && !(invalid instanceof Array) ) invalid = [invalid];
+    let is_invalid = get_has( invalid, false );
 
     itr.next();
     let it = itr.clone();
@@ -31,7 +32,7 @@ export function substring_quoted( itr, invalid = null )
     {
         if ( itr.value === '\\' ) { esc = !esc; }
         else if ( itr.value === quote && !esc ) { break; }
-        else if ( invalid && invalid.includes( itr.value ) ) { return ''; }
+        else if ( is_invalid( itr.value ) ) { return ''; }
         itr.next();
     }
 
@@ -39,6 +40,7 @@ export function substring_quoted( itr, invalid = null )
     itr.next();
     return sub;
 }
+
 
 /*
     Goto the end of a string
@@ -48,57 +50,43 @@ export function scan_to_end( it )
     while ( !it.end() ) { it.next(); }
 }
 
-function _pick_check( v )
-{
-    if ( is_string( v ) )
-    {
-        return (it) => it.value === v;
-    }
-    else if ( is_map( v ) || is_set( v ) )
-    {
-        return (it) => v.has( it.value );
-    }
-    else if ( is_array( v ) )
-    {
-        return (it) => v.includes( it.value );
-    }
-    else if ( is_func( v ) )
-    {
-        return (it) => v( it.value );
-    }
-    else if ( typeof v === 'object' )
-    {
-        return (it) => v.hasOwnProperty( it.value );
-    }
-
-    return (it) => true;
-}
-
+/**
+ * Iterate while get-value( test ) === cmp
+ * @param {*} it iterator
+ * @param {*} test collection
+ * @param {*} cmp comparison value
+ */
 function _scan( it, test, cmp )
 {
-    let _t = _pick_check( test );
-    while( !it.end() && (_t( it ) === cmp) ) { it.next(); }
+    let _t = get_has( test );
+    while( !it.done && (_t( it.value ) === cmp) )
+    {
+        it.next();
+    }
 }
 
-/*
+/**
     Advance iterator until some character is found
 */
-export function scan_to( it, find )
+export function scan_to( it, pred )
 {
-    _scan( it, find, false );
+    _scan( it, pred, false );
 }
 
-/*
+/**
     Advance iterator while some character is unseen
 */
-export function scan_while( it, skip )
+export function scan_while( it, pred )
 {
-    _scan( it, skip, true );
+    _scan( it, pred, true );
 }
 
-/*
-    
-*/
+/**
+ * iterate using `scan` and `find`. return substring of span. 
+ * @param {*} it iterator
+ * @param {*} scan function
+ * @param {*} find comparison value / collection
+ */
 export function substring_scan( it, scan, find )
 {
     let i = it.clone();
@@ -107,16 +95,31 @@ export function substring_scan( it, scan, find )
     return substring( i, it );
 }
 
+/**
+ * Iterate until `find` is met and return substring of span
+ * @param {*} it iterator
+ * @param {*} find comparison value/collection
+ */
 export function substring_scan_to( it, find )
 {
     return substring_scan( it, scan_to, find );
 }
 
+/**
+ * Iterate while `find` is met and return substring of span
+ * @param {*} it iterator
+ * @param {*} find comparison value/collection
+ */
 export function substring_scan_while( it, find )
 {
     return substring_scan( it, scan_while, find );
 }
 
+/**
+ * Get a string of `count` characters
+ * @param {*} itr 
+ * @param {*} count number of characters to read
+ */
 export function str_read( itr, count )
 {
     count = Math.trunc( count );
@@ -130,4 +133,40 @@ export function str_read( itr, count )
         }
     }
     return s;
+}
+
+/**
+ * Scan a string using a validator. return substring of span
+ * @param {*} itr 
+ * @param {*} validator Validator type
+ */
+export function substring_validator( itr, validator = new Validator() )
+{
+    let it = itr.clone();
+    scan_while( itr, validator );
+    
+    return substring( it, itr );
+}
+
+export function substring_identifier( itr, validator = new IdentfierValidator() )
+{
+    return substring_validator( itr, validator ).toLowerCase();
+}
+
+
+
+export let whitespace_validator = new ListValidator( [ 
+            '\u0009', '\u000A', '\u000B', '\u000C', '\u000D', '\u0020', '\u0085', '\u00A0',
+            '\u1680', '\u2000', '\u2001', '\u2002', '\u2003', '\u2004', '\u2005', '\u2006',
+            '\u2007', '\u2008', '\u2009', '\u200A', '\u2028', '\u2029', '\u202F', '\u205F',
+            '\u3000' ] );
+
+export function skip_whitespace( itr )
+{
+    scan_while( itr, whitespace_validator );
+}
+
+export function find_whitespace( itr )
+{
+    scan_to( itr, whitespace_validator );
 }
