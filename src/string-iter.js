@@ -28,15 +28,13 @@ export class string_iter
         if ( str instanceof string_iter ) // copy ctor
         {
             this._str = str._str;
-            this._index = str._index;
+            this.index = str.index;
         }
         else // ctor
         {
             this._str = new _str( str );
-            this._index = index;
+            this.index = index;
         }
-
-        this._clamp();
     }
 
     _ci()
@@ -68,8 +66,8 @@ export class string_iter
 
     set( /*string_iter*/ itr )
     {
+        this._str = itr._str;
         this.index = itr.index;
-        this.value = itr.value;
     }
 
     toString() { return this._value; }
@@ -84,9 +82,6 @@ export class string_iter
         return this._index;
     }
 
-    /**
-     * Does not check if `i` is the first byte of a character.
-     */
     set index( i )
     {
         this._index = i;
