@@ -82,7 +82,7 @@ test( 'pop_each', t => {
 
     let i = 0;
     s.pop_each( v => {
-        if ( v & 1 ) { s.push( v + 1 ); }
+        if ( v & 1 ) { s.push( v + 1 ); }   // pop_each works while adding items
         ++i;
     } );
 

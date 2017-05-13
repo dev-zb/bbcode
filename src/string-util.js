@@ -1,6 +1,6 @@
 import {get_has} from './util';
 import {string_iter} from './string-iter';
-import {Validator, ListValidator} from './validator';
+import {Validator, ListValidator, ident_validator} from './validator';
 
 /*
     Substring using iterators. Expects the iterators refer to the same string.
@@ -148,7 +148,7 @@ export function substring_validator( itr, validator = new Validator() )
     return substring( it, itr );
 }
 
-export function substring_identifier( itr, validator = new IdentfierValidator() )
+export function substring_identifier( itr, validator = ident_validator )
 {
     return substring_validator( itr, validator ).toLowerCase();
 }

@@ -1,6 +1,6 @@
 import {string_iter} from './string-iter';
 import {substring, scan_to_end} from './string-util';
-import {is_func} from './helper';
+import {is_func, is_string} from './util';
 
 /**
  * ==================== 
@@ -12,32 +12,54 @@ export class Node
     _line = 0;     // error reporting.
     _column = 0;
 
-    _origin_format = 'bbcode';
+    _origin_format = null;
 
     def = null;
+    _sub_type;      // used for cloning: set to the derived type.
 
-    constructor( props = { format: 'bbcode' } )
+    constructor( def, props = {}, derived = Node )
     {
-        this._origin_format = props.format;
-        this.def = props.def;
+        this._sub_type = derived;
+        if ( def instanceof Node )
+        {
+            Object.assign( this, def );
+        }
+        else 
+        {
+            this.def = def || {};
+            this._origin_format = props.format;
+            Object.assign( this, props );
+        }
     }
 
-    //format( format ) { return ''; }
-    format( format ) { return this.def ? this.def.format( format, this ) : ''; }
+    format( format )
+    {
+        return this.def ? this.def.format( format, this ) : '';
+    }
+
     get discard_invalid() { return false; }  // discard invalid nodes [true] or write them to the top level node as text
+
+    _def_compare( def )
+    {
+        return this.def === def ||
+                (is_func( this.def.compare ) && this.def.compare( def )) ||
+                (is_func( def.compare ) && def.compare( this.def ));
+    }
 
     compare( to )
     {
-        return (this.def && to.def) && 
-                (
-                    this.def === to.def ||
-                    (is_func(this.def.compare) && this.def.compare(to.def)) ||
-                    (is_func(to.def.compare) && to.def.compare(this.def))
-                );
+        return (this.def && to.def) && this._def_compare( to.def );
+    }
+
+    clone()
+    {
+        return new (this._sub_type)( this );
     }
 }
 
-   // plain text
+/**
+ * 
+ */
 export class TextNode
 {
     static format_sanitizers = new Map();
@@ -58,9 +80,14 @@ export class TextNode
     _start = null;
     _end = null;
 
+    /**
+     * [start, end)
+     * @param {*} start text range start iterator (included)
+     * @param {*} end text range end iterator (not included)
+     */
     constructor( start, end )
     {
-        if ( typeof start === 'string' )
+        if ( is_string( start ) )
         {
             this._start = new string_iter( start );
             this._end = this._start.clone();
@@ -70,6 +97,11 @@ export class TextNode
         {
             this._start = start.clone();
             this._end = end.clone() || this._start.clone();
+        }
+        else if ( start instanceof TextNode )   // copy constructor
+        {
+            this._start = start._start.clone();
+            this._end = start._end.clone();
         }
     }
 
@@ -87,42 +119,108 @@ export class TextNode
     {
         return TextNode.sanitize( fmt || this._origin_format, this.value );
     }
+
+    join( text )
+    {
+        if ( text.length && this._end.distance( text._start ) <= 0 )
+        {
+            this._end.set( text._end );
+        }
+    }
+
+    clone()
+    {
+        return new TextNode( this );
+    }
 }
 
-    // a node with children
+class TerminateResult {}
+class SameTypeResult {}
+
+export let ValidResult = Object.freeze( {
+    invalid: false,
+    valid: true,
+    terminate: TerminateResult,
+    same: SameTypeResult
+} );
+
+/**
+ * Node with children
+ */
 export class ContainerNode extends Node
 {
     children = [];
-    constructor( props )
+    text_formatter = null;      // how this container node handles text children
+
+    constructor( def, props, derived = ContainerNode )
     {
-        super( props );
+        super( def, props, derived );
+
+        if( def instanceof ContainerNode )
+        {
+            this.def = def.def;
+            this.text_formatter = def.text_formatter;
+        }
+    }
+
+    _is_child_allowed( c )
+    {
+        if ( this.def && is_func( this.def.valid_child ) )
+        {
+            return this.def.valid_child( c );
+        }
+
+        return ValidResult.valid;
+    }
+
+    _add_child_check( c )
+    {
+        let check = this._is_child_allowed( c );
+        if ( check === ValidResult.valid )
+        {
+            c.parent = this;
+            this.children.push( c );
+        }
+
+        return check;
+    }
+
+    add_text_child( txt )
+    {
+        if ( txt.length <= 0 ) { return false; }
+
+        let last = this.last_child();
+        if( last instanceof TextNode )
+        {
+            last.join( txt );
+            return ValidResult.valid;
+        }
+
+        return this._add_child_check( txt );
     }
 
     add_child( c )
     {
-        if ( c instanceof TextNode && c.length <= 0 ) return false;
+        if ( c instanceof TextNode )
+        {
+            return this.add_text_child( c );
+        }
 
-        this.children.push( c );
-        return true;
+        return this._add_child_check( c );
     }
 
     remove_child( ch )
     {
         let i = this.children.indexOf( ch );
-        this.children.splice( i, 1 );
+
+        i >= 0 && this.children.splice( i, 1 );
     }
 
     clear_children() { this.children = []; }
 
-    clone( deep = false )
-    { 
-        let n = new ContainerNode();
-        if ( deep )
-        {
-            n.children = this._clone_children( deep );
-        }
-
-        return n;
+    last_child()
+    {
+        return this.children[this.children.length - 1];
     }
 
     _clone_children( deep )
@@ -134,6 +232,16 @@ export class ContainerNode extends Node
         }
 
         return chld;
+    }
+
+    clone( deep = false )
+    { 
+        let n = super.clone();
+        if ( deep )
+        {
+            n.children = this._clone_children( deep );
+        }
+        return n;
     }
 
     terminate() { return false; }
@@ -153,10 +261,20 @@ export class ContainerNode extends Node
 }
 
 /**
- * Tells main parser to terminate the current / last node.
+ * Terminates a node on the stack
  */
 export class TerminateNode extends Node
 {
-    terminating = true;
-    compare() { return true; }
+    constructor( def )
+    {
+        super( def, {}, TerminateNode );
+    }
+
+    get terminating() { return true; }
+
+    compare( n )
+    {
+        return !this.def || !n.def || this._def_compare( n.def );
+    }
 }
+

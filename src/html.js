@@ -1,5 +1,5 @@
 import {MarkupFormatProperties} from './format';
-import {AttributeFormatter, TagFormatter} from './markup-formatter'
+import {AttributeFormatter, TagFormatter} from './markup-formatter';
 
 /**
  * HTML Format

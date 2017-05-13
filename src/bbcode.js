@@ -1,6 +1,6 @@
 import {MarkupFormatProperties} from './format';
-import {AttributeFormatter, TagFormatter} from './markup-formatter'
-import {TagDefinition} from './def';
+import {AttributeFormatter, TagFormatter} from './markup-formatter';
+import {TagDefinition} from './markup-def';
 import {ensure_array} from './util';
 
 /**

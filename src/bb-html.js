@@ -4,7 +4,7 @@ import {html_format} from './html';
 import {TextNode} from './nodes';
 import {TagNode, TagAttribute} from './markup-node';
 import {is_array, is_string, ensure_array} from './util';
-import {AttributeDefinition, TagDefinition} from './def';
+import {AttributeDefinition, TagDefinition} from './markup-def';
 
 /**
  * -----------------------------------------

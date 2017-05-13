@@ -1,4 +1,4 @@
-import {is_func, is_map, is_set, is_array} from './helper';
+import {is_func, is_map, is_set, is_array} from './util';
 
 export class stack
 {

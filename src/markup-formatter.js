@@ -25,7 +25,7 @@ export class CompositeValue extends AttrValue
     {
         if ( id instanceof CompositeValue )
         {
-            for( let [k,v] of id.values )
+            for( let [k, v] of id.values )
             {
                 this.values.set( k, v );
             }
@@ -322,7 +322,7 @@ export class TagFormatter extends NodeFormatter
         // for: [tag=value]
         if ( this.format_props.self_attribute && attr_map.has( this.identifier ) )
         {
-            ident = attr_map.get( this.identifier )
+            ident = attr_map.get( this.identifier );
             attr_map.delete( this.identifier );
         }
 

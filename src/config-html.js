@@ -1,8 +1,10 @@
 import {Parser} from './parser';
-import {TagParser} from './tag-parser';
+import {MarkupParser} from './tag-parser';
 import {bbcode_format} from './bbcode';
-import {TagDefinition, AttributeDefinition, UrlAttrDefinition, NumberAttrDefinition, ListAttrDefinition} from './def';
-import {HtmlTagFormatter, HtmlAttrFormatter, UrlAttrFormatter, html_format} from './html';
+import {html_format, HtmlTagFrmtr, HtmlAttrFrmtr} from './html';
+import {TagDefinition, AttributeDefinition} from './markup-def';
+import {TagFormatter, AttributeFormatter} from './markup-formatter';
+import {ColorValidator, NumberValidator, CSSValidator, ListValidator, URLValidator} from './validator';
 
 // html? [wip]
 let p_el_a = 'a,em,strong,small,mark,abbr,dfn,i,b,s,u,code,var,samp,kbd,sup,sub,q,cite,span,bdo,bdi,br,wbr,ins,del,img,map,area,video,audio,input,textarea,select,button,label,output,datalist,keygen,progress,command,canvas,time,meter'.split(',');
@@ -12,72 +14,22 @@ let p_el = new Set(p_el_a);
 let f_el = new Set(f_el_a);
 
 /**
- * ===========
- *  FORMATTERS
- * ===========
- */
-/**
- * style="" attribute
- */
-class StyleFormatter extends HtmlAttrFormatter
-{
-    static regex = /\s*([\w\-]+)\s*:\s*((?:(?:[\w\-]+\(\s*(?:"(?:\\"|[^"])*"|'(?:\\'|[^'])*'|[\w\-]+\(\s*(?:^"(?:\\"|[^"])*"|'(?:\\'|[^'])*'|[^\)]*)\),?|[^\)]*)\),?|"(?:\\"|[^"])*"|'(?:\\'|[^'])*'|[^;]*),?\s*)+);?/g;
-
-    constructor()
-    {
-        super( 'style' );
-    }
-
-    sanitize( value )
-    {
-        let p;
-        let _value = [];
-        while( (p = StyleFormatter.regex.exec(value)) !== null )
-        {
-            _value.push( `${p[1]}: ${p[2]}`);
-        }
-
-        return _value.join('; ');
-    }
-}
-
-/**
- * class=""
- */
-class ClassFormatter extends HtmlAttrFormatter
-{
-    static regex = /^([\w\-]*)$/;
-    constructor()
-    {
-        super( 'class' );
-    }
-
-    sanitize( value )
-    {
-        let classes = value.split( ' ' );
-        let v = null;
-        let r = [];
-        for( let c of classes )
-        {
-            if ( (v = ClassFormatter.regex.exec(c)) !== null ) { r.push( v ); }
-        }
-        return r.join( ' ' );
-    }
-}
-
-/**
  * ============
  *  ATTRIBUTES
  * ============
  */
-function _a( identifier, p ) { return new AttributeDefinition( identifier, new HtmlAttrFormatter( identifier ), p ); }
-function _u( identifier, p ) { return new UrlAttrDefinition( identifier, new UrlAttrFormatter( identifier ), p ); }
-function _n( identifier, min = Number.MIN_VALUE, max = Number.MAX_VALUE, p = {} ) { return new NumberAttrDefinition( identifier, min, max, new HtmlAttrFormatter( identifier ), p ); }
-function _l( identifier, list, def = 0, r = true, p = {} ) { return new ListAttrDefinition( identifier, list, new HtmlAttrFormatter( identifier ), Object.assign(p, { default_index: def, required: r }) ); }
+let urlv = { validator: new URLValidator() };
+
+function _af( f, ...p ) { return new AttributeDefinition( [new AttributeFormatter( f.identifier, bbcode_format ), f], Object.assign( {}, ...p ) ); }
+
+function _a( identifier, p = {} ) { return _af( new HtmlAttrFrmtr( identifier ), p ); }
+function _u( identifier, p = {} ) { return _af( new HtmlAttrFrmtr( identifier ),  p, urlv ); }
+function _n( identifier, min = Number.MIN_VALUE, max = Number.MAX_VALUE, p = {} ) { return _af( new HtmlAttrFrmtr( identifier ), p, { validator: new NumberValidator( min, max ) } ); }
+function _l( identifier, list, def = 0, r = true, p = {} ) { return _af( new HtmlAttrFrmtr( identifier ), p, { required: r, validator: new ListValidator( list, true ), default_value: def } ); }
 function _b( identifier, r = false, p = {} ) { return _l( identifier, [identifier, ''], 0, r, Object.assign( p, { require_value: false } ) ); }
 
-let style       = new AttributeDefinition( 'style', new StyleFormatter() );
-let css         = new AttributeDefinition( 'class', new ClassFormatter() );
+let style       = _a( 'style', { validator: new CSSValidator() } );// new AttributeDefinition(  'style', new StyleFormatter() );
+let css         = _a( 'class' ); // new AttributeDefinition( 'class', new ClassFormatter() );
 let id          = _a( 'id' );
 let title       = _a( 'title' );
 let src         = _u( 'src' );
@@ -157,7 +109,7 @@ let global = [style, css, title, tabindex, id];
  */
 function t( identifier, el, attr = [], props = {} )
 {
-    return new TagDefinition( identifier, el, global.concat(attr), new HtmlTagFormatter(identifier), props );
+    return new TagDefinition( [new TagFormatter( identifier, bbcode_format ), new HtmlTagFrmtr( identifier )], el, global.concat( attr ), props );
 }
 
 let elements = [
@@ -263,5 +215,5 @@ let elements = [
     //t( 'embed', [], [src,height,width,mimetype], { is_void: true }),
 ];
 
-export let html_bb_parser = new TagParser(elements, bbcode_format);
-export let html_parser = new TagParser(elements, html_format);
+export let html_bb_parser = new MarkupParser(elements, bbcode_format);
+export let html_parser = new MarkupParser(elements, html_format);

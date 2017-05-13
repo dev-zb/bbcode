@@ -1,69 +1,108 @@
 import {Parser} from './parser';
-import {TagParser} from './tag-parser';
-import {bbcode_format} from './bbcode';
-import {TagDefinition, AttributeDefinition, ColorAttrDefinition, UrlAttrDefinition, NumberAttrDefinition, AttrPair, ListAttrDefinition} from './def';
-import {HtmlTagFormatter, HtmlCTATagFormatter, UrlAttrFormatter, AttrJoinTagFormatter, AttrTagFormatter, StyleAttrFormatter, ColorStyleAttrFormatter, NumberStyleAttrFormatter, ContentWrapTagFormatter, HtmlTagDef} from './html';
+import {MarkupParser} from './tag-parser';
+import {TagDefinition, AttributeDefinition} from './markup-def';
+import {TagFormatter} from './markup-formatter';
+import {StyleFrmtr, StyleNumFrmtr, CToATagFrmtr, AttrTagFrmtr, AttrJoinTagFrmtr, ContentWrapTagFrmtr, CssClass, CssProp} from './bb-html';
+import {ColorValidator, NumberValidator, CSSValidator, ListValidator, URLValidator} from './validator';
+import {NullFormatter} from './formatter';
+import {bbcode_format, BBTagFrmtr, BBTagDef, BBAttrFrmtr} from './bbcode';
+import {html_format, HtmlTagFrmtr, HtmlAttrFrmtr} from './html';
 
 /**
  * Using semantic-ui styling (http://semantic-ui.com)
  */
-let common_allowed = ['b', 'i', 's', 'u', 'sup', 'sub', 'color', 'size', 'align', 'center', 'url', 'spoiler', 'divider', 'hr', 'list', 'ul', 'ol', 'table'];
-let list_allowed = ['li', '*'];
+let common_ch = ['b', 'i', 's', 'u', 'sup', 'sub', 'color', 'size', 'align', 'center', 'url', 'spoiler', 'divider', 'hr', 'list', 'ul', 'ol', 'table'];
+let list_ch = ['li', '*'];
 let special = ['quote', 'code'];
-let common_plus = common_allowed.concat(special);
+let common_plus = common_ch.concat( special );
 
-let wrapper = new HtmlTagDef( 'div', new AttrPair('class', 'content') );
-let label = new HtmlTagDef( 'div', new AttrPair( 'class', 'ui top attached label' ) );
-let segment = new HtmlTagDef( 'div', new AttrPair( 'class', 'ui segment' ) );
+let wrapper = new TagDefinition( new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'content' ) } ) );
+let label = new TagDefinition( new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'ui', 'top', 'attached', 'label' ) } ) );
+let segment = new TagDefinition( new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'ui', 'segment' ) } ) );
 
 // attributes
-let font_size = new AttributeDefinition('size', new NumberStyleAttrFormatter('font-size', 'px', 5, 30));
-let text_color = new ColorAttrDefinition('color', new ColorStyleAttrFormatter('color'));
+let font_size = new AttributeDefinition( [new BBAttrFrmtr( 'size' ), new StyleNumFrmtr( 'font-size', 'px' )], { validator: new NumberValidator( 5, 30, true ) } );
+let font_color = new AttributeDefinition( [new BBAttrFrmtr( 'color' ), new StyleFrmtr( 'color' )], { validator: new ColorValidator() } );
+let url = new AttributeDefinition( [new BBAttrFrmtr( 'url' ), new HtmlAttrFrmtr( 'href' )], { validator: new URLValidator() } );
+let img = new AttributeDefinition( [new BBAttrFrmtr( 'img' ), new HtmlAttrFrmtr( 'src' )], { validator: new URLValidator() } );
+
+function tag( bbcode_ident, html_ident, ch = common_ch, props = {} )
+{
+    return new BBTagDef( bbcode_ident, [new HtmlTagFrmtr( html_ident || bbcode_ident )], ch || common_ch, [], props );
+}
 
 let tag_defs = [
-    new TagDefinition( 'b',         common_allowed, [], new HtmlTagFormatter('b')   ),
-    new TagDefinition( 'i',         common_allowed, [], new HtmlTagFormatter('i')   ),
-    new TagDefinition( 'u',         common_allowed, [], new HtmlTagFormatter('u')   ),
-    new TagDefinition( 's',         common_allowed, [], new HtmlTagFormatter('s')   ),
+    tag( 'b' ),     // [b] -> <b>
+    tag( 'i' ),     // [i] -> <i>
+    tag( 'u' ),     // [u] -> <u>
+    tag( 's' ),     // [s] -> <s>
+    tag( 'sup' ),   // [sup] -> <sup>
+    tag( 'sub' ),   // [sub] -> <sub>
 
-    new TagDefinition( 'sup',       common_allowed, [], new HtmlTagFormatter('sup') ),
-    new TagDefinition( 'sub',       common_allowed, [], new HtmlTagFormatter('sub') ),
+    // [center] -> <div class="center">
+    new BBTagDef( 'center', new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'center' ) } ), common_ch, [] ),
 
-    new TagDefinition( 'center',    common_allowed, [], new HtmlTagFormatter('div', new AttrPair('class', 'center') ) ),
-    new TagDefinition( 'align',     common_allowed, [new ListAttrDefinition('align', ['left', 'center', 'right', 'justify'], new StyleAttrFormatter('text-align'))], new HtmlTagFormatter('div') ),
+    // [align=left|center|right|jusitified] -> <div style="text-align: ???">
+    new BBTagDef( 'align',  new HtmlTagFrmtr( 'div' ), common_ch, [new AttributeDefinition( [new BBAttrFrmtr( 'align' ), new StyleFrmtr( 'text-align' )], { validator: new ListValidator( ['left', 'center', 'right', 'justify'], true ) } )] ),
 
-    new TagDefinition( 'list',      list_allowed,   [], new HtmlTagFormatter('div', new AttrPair('class', 'ui bulleted list')) ),
-    new TagDefinition( 'ul',        list_allowed,   [], new HtmlTagFormatter('div', new AttrPair('class', 'ui bulleted list')) ),
-    new TagDefinition( 'ol',        list_allowed,   [], new HtmlTagFormatter('div', new AttrPair('class', 'ui ordered list')) ),
-    new TagDefinition( 'li',        common_allowed, [], new HtmlTagFormatter('div', new AttrPair('class', 'item')), { overflow: false, terminate: ['li', '*'] } ),
-    new TagDefinition( '*',         common_allowed, [], new HtmlTagFormatter('div', new AttrPair('class', 'item')), { overflow: false, terminate: ['li', '*'] } ),
+    // [list] -> ul
+    new BBTagDef( 'list', new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'ui', 'bulleted', 'list' ) } ), list_ch, [] ),
+    // [ul] -> <ul>
+    new BBTagDef( 'ul', new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'ui', 'bulleted', 'list' ) } ), list_ch, [] ),
+    // [ol] -> <ol>
+    new BBTagDef( 'ol', new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'ui', 'ordered', 'list' ) } ), list_ch, [] ),
+    // [li] -> <li>
+    new BBTagDef( 'li', new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'item' ) } ), common_ch, [], { overflow: false, terminator: ['li', '*'] } ),
+    // [*] -> <li>
+    new TagDefinition( [new BBTagFrmtr( '*', { _close_tag: () => '' } ), new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'item' ) } )], common_ch, [], { overflow: false, terminator: ['li', '*'] } ),
 
-    new TagDefinition( 'size',      common_allowed, [font_size], new HtmlTagFormatter('span') ),
-    new TagDefinition( 'color',     common_allowed, [text_color], new HtmlTagFormatter('span') ),
-    new TagDefinition( 'style',     common_allowed, [font_size, text_color], new HtmlTagFormatter('span')),
-
-    new TagDefinition( 'noparse',   [], [], new HtmlTagFormatter(null), { overflow: false } ),
-
-    new TagDefinition( 'table',     ['thead', 'tbody', 'tfoot', 'tr'], [], new HtmlTagFormatter('table', new AttrPair( 'class', 'ui celled table' )) ),
-    new TagDefinition( 'thead',     ['tr'],                            [], new HtmlTagFormatter('thead'), { overflow: false, terminate: ['tbody', 'tfoot'] } ),
-    new TagDefinition( 'tbody',     ['tr'],                            [], new HtmlTagFormatter('tbody'), { overflow: false, terminate: ['tbody', 'tfoot'] } ),
-    new TagDefinition( 'tfoot',     ['tr'],                            [], new HtmlTagFormatter('tfoot'), { overflow: false, terminate: ['tbody'] } ),
-    new TagDefinition( 'tr',        ['td', 'th'],                      [], new HtmlTagFormatter('tr'),    { overflow: false, terminate: ['tr'] } ),    
-    new TagDefinition( 'th',        common_plus,                       [], new HtmlTagFormatter('th'),    { overflow: false, terminate: ['th', 'td'] } ),
-    new TagDefinition( 'td',        common_plus,                       [], new HtmlTagFormatter('td'),    { overflow: false, terminate: ['td', 'th'] } ),
-
-    new TagDefinition( 'hr',        [], [], new HtmlTagFormatter('div', new AttrPair('class', 'ui divider'), { is_void: false }), { is_void: true } ),
-    new TagDefinition( 'divider',   common_allowed.slice(0, -7), [], new HtmlTagFormatter('div', new AttrPair('class', 'ui horizontal divider') ), { overflow: false } ),
-
-    new TagDefinition( 'url',       [], [new UrlAttrDefinition('url', new UrlAttrFormatter('href'))], new HtmlCTATagFormatter('a', 'url'), { terminate: ['url'] }),
-    new TagDefinition( 'img',       [], [new UrlAttrDefinition('img', new UrlAttrFormatter('src'))],  new HtmlCTATagFormatter('img', 'img', 'title', null, { is_void: true } )),
-
-    new TagDefinition( 'code',      [],          [new AttributeDefinition('code', new AttrTagFormatter(label), { required: true, default_value: 'code' })],  new ContentWrapTagFormatter( segment, wrapper) ),
-    new TagDefinition( 'quote',     common_plus, [new AttributeDefinition('quote', new AttrTagFormatter(label), { required: true, default_value: 'quote'})], new ContentWrapTagFormatter( segment, wrapper) ),
-
-    new TagDefinition( 'spoiler',   common_allowed, [], new HtmlTagFormatter('span', new AttrPair('class', 'spoiler') ) ),
+    // [size=#] -> <span style="font-size: #px;">
+    new BBTagDef( 'size', new HtmlTagFrmtr( 'span' ), common_ch, [font_size] ),
     
-    new TagDefinition( 'header',    common_allowed, [new NumberAttrDefinition('header', 1, 6, null, { required: true, default_value: 6 })], new AttrJoinTagFormatter('h', 'header', new AttrPair('class', 'ui header'), { format_value: false }) )
+    // [color=???] -> <span style="color: ???;">
+    new BBTagDef( 'color', new HtmlTagFrmtr( 'span' ), common_ch, [font_color] ),
+
+    // [style size=# color=foo] -> <span style="font-size: #px; color: foo;">
+    new BBTagDef( 'style', new HtmlTagFrmtr( 'span' ), common_ch, [font_size, font_color] ),
+
+    // [noparse] -> ''
+    new BBTagDef( 'noparse', new HtmlTagFrmtr( '' ), [], [], { overflow: false } ),
+
+    // [table] -> <table>
+    new BBTagDef( 'table', new HtmlTagFrmtr( 'table', { attributes: new CssClass( 'ui', 'celled', 'table' ) } ), ['thead', 'tbody', 'tfoot', 'tr'], [] ),
+    
+    tag( 'thead', 'thead', ['tr'], { overflow: false, terminator: ['tbody', 'tfoot'] } ),
+    tag( 'tbody', 'tbody', ['tr'], { overflow: false, terminator: ['tbody', 'tfoot'] } ),
+    tag( 'tfoot', 'tfoot', ['tr'], { overflow: false, terminator: ['tbody'] } ),
+    tag( 'tr', 'tr', ['td', 'th'], { overflow: false, terminator: ['tr'] } ),
+    tag( 'th', 'th', common_plus, { overflow: false, terminator: ['th', 'td'] } ),
+    tag( 'td', 'td', common_plus, { overflow: false, terminator: ['th', 'td'] } ),
+
+    // [hr] -> <div class="ui divider">
+    new TagDefinition( [new BBTagFrmtr( 'hr', { is_void: true } ), new HtmlTagFrmtr( 'div', { attributes: new CssClass( 'ui', 'divider' ) } )], [], [] ),
+
+    // [divider] -> <div class="ui horizontal divider">
+    new BBTagDef( 'divider',  new HtmlTagFrmtr('div', { attributes: new CssClass( 'ui', 'horizontal', 'divider' ) } ), common_ch.slice(0, -7), [], { overflow: false } ),
+
+    // [url]
+    new BBTagDef( 'url', new CToATagFrmtr( 'a', url ), [], [url], { terminator: ['url'] } ),
+    
+    // [img]
+    new BBTagDef( 'img', new CToATagFrmtr( 'img', img, new AttributeDefinition( new HtmlAttrFrmtr( 'title' ) ), { is_void: true, void_children: false } ), [], [img] ),
+    
+    // [code]
+    new TagDefinition( [new BBTagFrmtr( 'code', { format_defaults: false } ), new ContentWrapTagFrmtr( segment, wrapper )], [], [new AttributeDefinition( [new BBAttrFrmtr( 'code' ), new AttrTagFrmtr( label )], { required: true, default_value: 'code' })]),
+
+    // [quote]
+    new TagDefinition( [new BBTagFrmtr( 'quote', { format_defaults: false } ), new ContentWrapTagFrmtr( segment, wrapper )], common_plus, [new AttributeDefinition( [new BBAttrFrmtr( 'quote' ), new AttrTagFrmtr( label )], { required: true, default_value: 'quote'} )]),
+
+    // [spoiler]
+    new BBTagDef( 'spoiler', new HtmlTagFrmtr( 'span', { attributes: new CssClass( 'spoiler' ) } ), common_ch, [] ),
+    
+    // [header]
+    new BBTagDef( 'header', new AttrJoinTagFrmtr( 'h', 'header', { format_value: false, attributes: new CssClass( 'ui', 'header' ) } ), common_ch, [new AttributeDefinition( [new BBAttrFrmtr( 'header' ), new NullFormatter( html_format )], { validator: new NumberValidator( 1, 6, true ), required: true, default_value: 6 })] )
 ];
 
-export let bbcode_parser = new TagParser(tag_defs, bbcode_format);
+export let bbcode_parser = new MarkupParser(tag_defs, bbcode_format);
+
+export {Parser} from './parser';

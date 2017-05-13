@@ -1,3 +1,5 @@
+import {Validator} from './validator';
+
 export function is_array( v ) { return v instanceof Array; }
 export function is_map( v ) { return v instanceof Map; }
 export function is_set( v ) { return v instanceof Set; }
@@ -9,23 +11,63 @@ export function is_func( v ) { return typeof v === 'function'; }
 */
 export function ensure_array( v ) { return is_array(v) ? v : [v]; }
 
-/*
-    Checks if an identifier is valid (only checks ascii range)
-*/
-export function valid_identifier( c, start = false )
+/**
+ * Get a function that will test if a given value exists
+ * @param {*} collection 
+ * @param {*} default_value default return value
+ */
+export function get_has( collection, default_value = true )
 {
-    return c && (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (!start && c === '-');
+    if ( is_string( collection ) )
+    {
+        collection = new Set(collection.split(''));
+        return (v) => collection.has( v );
+    }
+    else if ( is_map( collection ) || is_set( collection ) )
+    {
+        return (v) => collection.has( v );
+    }
+    else if ( is_array( collection ) )
+    {
+        return (v) => collection.includes( v );
+    }
+    else if ( is_func( collection ) )
+    {
+        return (v) => collection( v );
+    }
+    else if ( collection instanceof Validator )
+    {
+        let f = (v) => { let r = collection.char( v, true ); f = (v) => collection.char( v ); return r; };
+        return (v) => f( v );
+    }
+    else if ( collection && typeof collection === 'object' )
+    {
+        return (v) => collection.hasOwnProperty( v );
+    }
+
+    return (v) => default_value;
 }
 
-/*
-    Returns a function that will use the proper 'find' on a collection: has( some_var )( some_val );
-    @param col collection variable (array, map, set, string, object)
-*/
-export function has( col )
+export function get_iterable( v )
 {
-    if ( is_array( col ) ) { return (v) => col.includes( v ); }
-    if ( is_map( col ) || is_set( col ) ) { return (v) => col.has( v ); }
-    if ( is_string( col ) ) { return (v) => col.search( v ) !== -1; }
+    if ( is_map( v ) ) { return v.values(); }
+    else if ( is_array( v ) || is_set( v ) || is_string( v ) ) { return v; }
+    else
+    {
+        let names = v.getOwnPropertyNames();
+        return {
+            [Symbol.iterator]: () => { 
+                return { done: !!names.length, value: v[names.pop()] };
+            }
+        };
+    }
+}
 
-    return (v) => col.hasOwnProperty( v );
+export class pair
+{
+    constructor( first, second )
+    {
+        this.first = first;
+        this.second = second;
+    }
 }

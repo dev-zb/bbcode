@@ -1,6 +1,7 @@
 import test from 'ava';
 import {string_iter} from '../src/string-iter';
-import {substring, substring_quoted, scan_to, scan_while} from '../src/string-util';
+import {substring, substring_quoted, scan_to, scan_while, substring_validator} from '../src/string-util';
+import {IdentifierValidator} from '../src/validator';
 
 test( 'stop at string end', t => {
     let itr = new string_iter('abcd');
@@ -10,7 +11,7 @@ test( 'stop at string end', t => {
 
     t.is( itr.index, i );
     t.true( itr.end() );
-});
+} );
 
 test( 'unicode characters', t => {
     let str = ['a','⛄','b','\u{2620}'];
@@ -24,7 +25,7 @@ test( 'unicode characters', t => {
         itr.next();
         ++i;
     }
-});
+} );
 
 test( 'substring', t => {
     let it1 = new string_iter( 'abcdef', 1 );
@@ -34,21 +35,21 @@ test( 'substring', t => {
     let str = substring( it1, it2 );
     
     t.is( str, 'bcd' );
-});
+} );
 
 test( 'substring_quoted', t => {
     let itr = new string_iter( '"foo"' );
     let str = substring_quoted( itr );
 
     t.is( str, 'foo' );
-});
+} );
 
 test( 'substring_quoted with invalid', t => {
     let itr = new string_iter( ':foo bar:');
     let str = substring_quoted( itr, ' ' );
 
     t.is( str, '' );
-});
+} );
 
 test( 'scan_to', t => {
 
@@ -62,7 +63,7 @@ test( 'scan_to', t => {
         scan_to( itr, _t );
         t.is( itr.value, '=' );
     });
-});
+} );
 
 test( 'scan_while', t => {
 
@@ -76,4 +77,15 @@ test( 'scan_while', t => {
         scan_while( itr, _t );
         t.is( itr.value, 'b' );
     });
-});
+} );
+
+test( 'substring_validator', t => {
+    let v = new IdentifierValidator();
+
+    let str = 'ab0-9YZ';
+    let ident = substring_validator( new string_iter( str ), v );
+    t.is( ident, str );
+
+    let str2 = '-a';
+    t.is( substring_validator( new string_iter( str2 ), v ), '' );  // expect invalid identifier
+} );
