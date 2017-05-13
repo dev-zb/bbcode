@@ -1,7 +1,7 @@
 import {Node} from './nodes';
-/**
- * 
- */
+
+export class NullError {}
+
 export class ParseError
 {
     line = 0;           // parse line [split on newline]
@@ -41,5 +41,3 @@ export class NodeParseError extends ParseError
         return super.toString() + ` (${this.node_identifier})`;
     }
 }
-
-export class NullError {}   // error to be ignored.
