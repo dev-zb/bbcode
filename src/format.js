@@ -3,18 +3,18 @@ import {TextNode} from './nodes';
 function no_san(v) { return v; }
 export class FormatProperties
 {
-    identifier;
+    name;
 
-    constructor( identifier, props = {} )
+    constructor( name, props = {} )
     {
-        this.identifier = identifier;
+        this.name = name;
         Object.assign( this, props );
-        TextNode.add_sanitizer( this.identifier, props.text_sanitize || no_san );
+        TextNode.add_sanitizer( this.name, props.text_sanitize || no_san );
     }
 
     sanitize( text )
     {
-        TextNode.sanitize( this.identifier, text );
+        TextNode.sanitize( this.name, text );
     }
 }
 
@@ -28,9 +28,9 @@ export class MarkupFormatProperties extends FormatProperties
         self_attribute: false
     };
 
-    constructor( identifier = '', props = {} )
+    constructor( name = '', props = {} )
     {
-        super( identifier, Object.assign({}, MarkupFormatProperties.default_props, props ) );
+        super( name, Object.assign({}, MarkupFormatProperties.default_props, props ) );
     }
 
     get l_bracket() { return this.brackets[0]; }
