@@ -1,8 +1,8 @@
-### Parser and formatter for BBCode, HTML, and Markdown.
+### Parser and formatter for BBCode, HTML
 
 ## Use
-[Basics](docs/using.md)
-[Customization](docs/customize.md)
+* [Basics](docs/using.md)
+* [Customization](docs/customize.md)
 
 ## Test
 
