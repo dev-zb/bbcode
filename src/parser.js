@@ -36,7 +36,7 @@ export class itr_ex extends string_iter
 
     _update_loc()
     {
-        ++this._state._column;
+        ++this._state.column;
         if ( this.value === '\n' )
         {
             this._last_break = new string_iter( this );

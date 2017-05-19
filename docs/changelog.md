@@ -1,3 +1,10 @@
+## 2.0.1
+
+### Bug Fixes
+* html config - correct format properties
+* add_option - check option
+* error - identifier
+
 ## 2.0.0
 
 * refactor

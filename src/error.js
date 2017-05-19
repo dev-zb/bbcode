@@ -33,7 +33,7 @@ export class NodeParseError extends ParseError
                consume
              );
         
-        this.node_identifier = node.identifier || '';
+        this.node_identifier = node.identifier || node;
     }
 
     toString()

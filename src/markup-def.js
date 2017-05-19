@@ -9,13 +9,11 @@ import {AttributeFormatter} from './markup-formatter';
  */
 export class AttributeDefinition extends BaseDefinition
 {
-    static require_value_default = true;
-
     static defaults = 
         {
-            required: false,   // lets parser know that this attribute is required. the parser will attempt to create it when missing.
-            require_value: AttributeDefinition.require_value_default,  // value is required
-            default_value: null,                                       // default value when validation fails
+            required: false,      // lets parser know that this attribute is required. the parser will attempt to create it when missing.
+            require_value: true,  // value is required
+            default_value: null,  // default value when validation fails
         };
 
     constructor( formatters, props = {} )

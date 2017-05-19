@@ -190,6 +190,8 @@ export class ListValidator extends Validator
 
     add_option( option )
     {
+        if ( !option) { return; }
+        
         this.options.push( option );
         this._first.add( option[0] );
         for( let c of option ) { this._chars.add( c ); }

@@ -20,7 +20,7 @@ let f_el = new Set(f_el_a);
  */
 let urlv = { validator: new URLValidator() };
 
-function _af( f, ...p ) { return new AttributeDefinition( [new AttributeFormatter( f.identifier, bbcode_format ), f], Object.assign( {}, ...p ) ); }
+function _af( f, ...p ) { return new AttributeDefinition( [f, new AttributeFormatter( f.identifier, bbcode_format )], Object.assign( {}, ...p ) ); }
 
 function _a( identifier, p = {} ) { return _af( new HtmlAttrFrmtr( identifier ), p ); }
 function _u( identifier, p = {} ) { return _af( new HtmlAttrFrmtr( identifier ),  p, urlv ); }
@@ -109,7 +109,7 @@ let global = [style, css, title, tabindex, id];
  */
 function t( identifier, el, attr = [], props = {} )
 {
-    return new TagDefinition( [new TagFormatter( identifier, bbcode_format ), new HtmlTagFrmtr( identifier )], el, global.concat( attr ), props );
+    return new TagDefinition( [new HtmlTagFrmtr( identifier ), new TagFormatter( identifier, bbcode_format )], el, global.concat( attr ), props );
 }
 
 let elements = [
@@ -215,5 +215,4 @@ let elements = [
     //t( 'embed', [], [src,height,width,mimetype], { is_void: true }),
 ];
 
-export let html_bb_parser = new MarkupParser(elements, bbcode_format);
 export let html_parser = new MarkupParser(elements, html_format);

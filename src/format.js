@@ -25,7 +25,8 @@ export class MarkupFormatProperties extends FormatProperties
         brackets: ['', ''],      //
         eq: '=',
         term: '/',
-        self_attribute: false
+        self_attribute: false,
+        quotes: ["'",'"']
     };
 
     constructor( name = '', props = {} )

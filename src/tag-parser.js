@@ -9,8 +9,6 @@ import {TerminateNode} from './nodes';
 
 export class MarkupParser
 {
-    static quotes = ['\'', '"']; // allowed attribute value quotes
-
     format_props = null;
 
     _tag_defs = new Map();        // tag definitions
@@ -133,7 +131,7 @@ export class MarkupParser
             itr.next();
             skip_whitespace( itr );
 
-            if ( MarkupParser.quotes.includes( itr.value ) ) // when wrapped in quotes. full validation happens later
+            if ( this.format_props.quotes.includes( itr.value ) ) // when wrapped in quotes. full validation happens later
             {
                 quote = itr.value;
                 value = substring_quoted( itr );
