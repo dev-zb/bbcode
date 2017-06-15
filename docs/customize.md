@@ -98,7 +98,7 @@ If the tag was originally not void (like the bbcode tag above) it may contain ch
 [Validators](../src/validator.js) are used during parse to validate identifiers and values. The `char` method is called for each character individually and if the parse action is successful the `string` method is used to do a complete validation of the value.
 * `Validator` is the basic validator and always succeeds.
 * `Invalidator` is the opposite of `Validator`
-* `FallbackValidator` takes a primary and secondary validator. If the primary fails it attemps the secondary.
+* `FallbackValidator` takes a primary and secondary validator. If the primary fails it attempts the secondary.
 * `CompositeValidator` contains any number of validators and all must validate successfully or validation fails.
 * `RegexValidator` takes and uses a regex in `string`. `char` always passes.
 * `IdentifierValidator` allows numbers (0-9) letters (a-z, A-Z) and hyphen (-).
